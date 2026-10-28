@@ -332,7 +332,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
     { key: 'fuel', label: '燃料タンク', hint: '出撃時の燃料', min: 40, max: 200, step: 10, def: 100 },
     { key: 'burn', label: '燃料消費', hint: 'ブースト1秒あたりの消費', min: 4, max: 25, step: 1, def: 10 },
     { key: 'debris', label: 'デブリの量', hint: '0で出現しない', min: 0, max: 3, step: 0.5, def: 1 },
-    { key: 'sens', label: '傾きの感度', hint: '大きいほど少しの傾きで動く', min: 0.5, max: 2.5, step: 0.1, def: 1 },
+    { key: 'sens', label: '傾きの感度', hint: '大きいほど少しの傾きで動く', min: 0.5, max: 2.5, step: 0.1, def: 1.5 },
     { key: 'spacing', label: '星の間隔', hint: '次の星が現れるまでの距離', min: 900, max: 3000, step: 100, def: 1700 }
   ];
   const cfg = { invX: false, invY: false };
@@ -340,13 +340,20 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
   const save = { hull: 100, res: {} };
   try {
     const c = JSON.parse(localStorage.getItem('tiltflight.cfg') || 'null');
-    if (c) Object.assign(cfg, c);
+    if (c) {
+      // 旧版は全項目を保存していたので、旧初期値(感度1)のままなら新しい初期値を使う
+      if (!c.v && c.sens === 1) delete c.sens;
+      Object.assign(cfg, c);
+    }
     const s = JSON.parse(localStorage.getItem('tiltflight.save') || 'null');
     if (s) Object.assign(save, s);
   } catch (e) { /* 保存なしで続行 */ }
   const persist = () => {
     try {
-      localStorage.setItem('tiltflight.cfg', JSON.stringify(cfg));
+      // 初期値から変えた項目だけ保存する(初期値を見直したとき、変えていない人には新しい値が効く)
+      const out = { v: 2, invX: cfg.invX, invY: cfg.invY };
+      SETTINGS.forEach(s => { if (cfg[s.key] !== s.def) out[s.key] = cfg[s.key]; });
+      localStorage.setItem('tiltflight.cfg', JSON.stringify(out));
       localStorage.setItem('tiltflight.save', JSON.stringify(save));
     } catch (e) { /* 保存できない環境 */ }
   };
