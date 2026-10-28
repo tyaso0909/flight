@@ -201,6 +201,39 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .toggles { display: flex; gap: 1.2em; flex-wrap: wrap; margin-bottom: 1em; font-size: 0.9em; }
 .toggles label { display: flex; align-items: center; gap: 0.4em; }
 
+/* 着陸後の探索 */
+.explore { width: min(94%, 900px); }
+.explore .result-head { margin-bottom: 0.6em; }
+.ex-grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 1.2em; align-items: start; }
+.ex-grid > * { min-width: 0; }
+.ex-map { position: relative; aspect-ratio: 2 / 1; max-width: 100%; border-radius: 8px; border: 1px solid var(--edge); overflow: hidden; background: #0a0e16; }
+.ex-node {
+  position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 0.2em;
+  background: none; border: 0; padding: 0.3em; cursor: pointer; color: var(--text); border-radius: 8px;
+}
+.ex-node svg { width: 2.4em; height: 2.4em; overflow: visible; }
+.ex-node .ring { fill: rgba(11, 15, 23, 0.8); stroke: var(--amber); stroke-width: 2; }
+.ex-node .glyph { fill: var(--amber); }
+.ex-node span { font-size: 0.78em; background: rgba(11, 15, 23, 0.8); padding: 0.05em 0.55em; border-radius: 999px; white-space: nowrap; }
+.ex-node.danger .ring { stroke: var(--warn); }
+.ex-node.danger .glyph { fill: var(--warn); }
+.ex-node.unknown .ring { stroke: var(--muted); stroke-dasharray: 4 3; }
+.ex-node.unknown .glyph { fill: var(--muted); }
+.ex-node.done { opacity: 0.45; }
+.ex-node.done .ring { stroke: var(--edge); }
+.ex-node:disabled { cursor: default; }
+.ex-node:not(:disabled):hover .ring { stroke-width: 3; }
+.ex-side .mfd-row { margin-bottom: 0.3em; }
+.pips { display: inline-flex; gap: 0.35em; }
+.pip { display: block; width: 0.8em; height: 0.8em; border-radius: 50%; border: 1.5px solid var(--amber); box-sizing: border-box; }
+.pip.on { background: var(--amber); }
+.ex-log { list-style: none; margin: 0.6em 0 1em; padding: 0; display: grid; gap: 0.45em; font-size: 0.86em; }
+.ex-log li { border-left: 2px solid var(--amber); padding-left: 0.6em; line-height: 1.5; }
+.ex-log li.bad { border-color: var(--warn); }
+.ex-log li.crew { border-color: var(--ok); }
+.ex-log li.empty { border: 0; padding: 0; color: var(--muted); }
+.crew-note { display: block; color: var(--muted); font-size: 0.82em; }
+
 @media (prefers-reduced-motion: reduce) { #warn { animation: none; } }
 </style>
 
@@ -278,6 +311,8 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
         <div class="stat"><span>耐久</span><div class="bar hull"><i id="bHullBar"></i></div><span id="bHull" class="v">100</span></div>
         <div id="bChips" class="actions" style="margin-bottom:.8em"></div>
         <p class="note" id="ctrlNote"></p>
+        <h2 style="margin-top:1em">仲間</h2>
+        <ul id="crewList" class="res-list"></ul>
       </div>
       <div>
         <h2>持ち帰った資源</h2>
@@ -290,7 +325,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
         </div>
       </div>
     </div>
-    <p class="note"><b>遊び方</b> 傾けて操縦し、ブーストで速度を保ちます。押さないと減速し、速度計の赤い線を下回ると近くの星に引き寄せられます。降りたい星の近くではブーストをやめ、通り過ぎたい星はブーストで振り切ります。燃料が切れると不時着して機体が傷つきます。</p>
+    <p class="note"><b>遊び方</b> 傾けて操縦し、ブーストで速度を保ちます。押さないと減速し、速度計の赤い線を下回ると近くの星に引き寄せられます。降りたい星の近くではブーストをやめ、通り過ぎたい星はブーストで振り切ります。燃料が切れると不時着して機体が傷つき、着陸後に探索できる回数も減ります。</p>
   </section>
 
   <section id="scrResult" class="panel" hidden aria-labelledby="resTitle">
@@ -298,6 +333,20 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
     <div class="result-head"><h1 id="resTitle">着陸</h1><span id="resTag" class="tag ok">着陸成功</span></div>
     <dl class="kv" id="resKv"></dl>
     <div class="actions"><button id="btnHome" class="btn primary" type="button">拠点へ帰還</button></div>
+  </section>
+
+  <section id="scrExplore" class="panel explore" hidden aria-labelledby="exTitle">
+    <p class="eyebrow">着陸地点</p>
+    <div class="result-head"><h1 id="exTitle">着陸した星</h1><span id="exTag" class="tag ok">着陸成功</span></div>
+    <div class="ex-grid">
+      <div id="exMap" class="ex-map" role="group" aria-label="探索地点"></div>
+      <div class="ex-side">
+        <div class="mfd-row"><span>残りの探索</span><span id="exPips" class="pips"></span></div>
+        <p id="exHint" class="note" style="margin:0"></p>
+        <ul id="exLog" class="ex-log"></ul>
+        <div class="actions"><button id="btnExDone" class="btn primary" type="button">拠点へ帰還</button></div>
+      </div>
+    </div>
   </section>
 
   <section id="scrSettings" class="panel" hidden aria-labelledby="setTitle">
@@ -311,7 +360,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
     <div class="actions">
       <button id="btnSetClose" class="btn primary" type="button">閉じる</button>
       <button id="btnSetReset" class="btn" type="button">初期値に戻す</button>
-      <button id="btnWipe" class="btn" type="button">資源と耐久をリセット</button>
+      <button id="btnWipe" class="btn" type="button">資源・耐久・仲間をリセット</button>
     </div>
     <p class="note">調整した値はこの端末のブラウザに保存されます。</p>
   </section>
@@ -337,7 +386,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
   ];
   const cfg = { invX: false, invY: false };
   SETTINGS.forEach(s => { cfg[s.key] = s.def; });
-  const save = { hull: 100, res: {} };
+  const save = { hull: 100, res: {}, crew: [] };
   try {
     const c = JSON.parse(localStorage.getItem('tiltflight.cfg') || 'null');
     if (c) {
@@ -366,6 +415,19 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
     { key: 'forest', name: '森林星', code: 'SY', res: '樹脂', glow: 0x8fd6a0, css: '#8fd6a0' },
     { key: 'machine', name: '機械星', code: 'MK', res: '合金片', glow: 0x9fb7d6, css: '#9fb7d6' },
     { key: 'gas', name: 'ガス星', code: 'NB', res: 'ガス結晶', glow: 0xd7a6ff, css: '#d7a6ff' }
+  ];
+  const KINDS = {
+    vein: { name: '鉱脈' },
+    ruin: { name: '遺跡' },
+    village: { name: '集落' },
+    danger: { name: '危険地帯' }
+  };
+  const CREW = [
+    { key: 'miner', role: '採掘士', name: 'ドゥーラ', note: '鉱脈で手に入る資源が1.3倍' },
+    { key: 'engineer', role: '技師', name: 'ミロ', note: '推進系パーツの製作(未実装)' },
+    { key: 'armor', role: '装甲職人', name: 'ハッカ', note: '防御系パーツの製作(未実装)' },
+    { key: 'shipwright', role: '造船士', name: 'セナ', note: '新しい船の設計(未実装)' },
+    { key: 'navigator', role: '航法士', name: 'ルオ', note: '星図の拡張(未実装)' }
   ];
 
   // ---------- 横画面の強制 ----------
@@ -551,6 +613,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
   const run = {};
   let planets = [], debris = [];
   let land = null;
+  let ex = null;
   const tmpObj = new THREE.PerspectiveCamera(); // カメラは -Z を向くので、向きの計算もカメラで行う
   const startQ = new THREE.Quaternion();
   const tmpV = new THREE.Vector3();
@@ -844,35 +907,156 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 
   function finishLanding() {
     const p = land.p, crash = land.crash;
-    const ly = Math.round(run.dist / 10);
-    const base = 10 * [1, 2, 4][p.rar - 1] * (0.8 + Math.random() * 0.4);
-    const amount = Math.max(1, Math.round(base * (crash ? 0.5 : 1)));
-    const loss = crash ? 30 : 0;
-    const before = save.hull;
-    save.hull = Math.max(0, save.hull - loss);
-    save.res[p.type.key] = (save.res[p.type.key] || 0) + amount;
+    const hullBefore = save.hull;
+    if (crash) save.hull = Math.max(0, save.hull - 30);
     persist();
-
-    $('resTitle').textContent = `${p.type.name} ${p.name}`;
-    const tag = $('resTag');
-    tag.textContent = crash ? '不時着' : '着陸成功';
-    tag.className = 'tag ' + (crash ? 'bad' : 'ok');
-    const rows = [
-      ['到達距離', `${ly.toLocaleString('ja-JP')} 光年`],
-      ['星のレア度', `<span class="stars">${'★'.repeat(p.rar)}${'☆'.repeat(3 - p.rar)}</span>`],
-      ['獲得資源', `${p.type.res} ×${amount}${crash ? '(不時着で半減)' : ''}`],
-      ['残り燃料', `${Math.round(run.fuel)} / ${run.maxFuel}`],
-      ['耐久', crash ? `${before} → ${save.hull}(機体が損傷)` : `${save.hull}(損傷なし)`]
-    ];
-    $('resKv').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
-
-    clearWorld();
+    // 着陸した星だけ残し、探索画面の背景に見せる
+    planets.filter(q => q !== p).forEach(q => scene.remove(q.group));
+    planets = [p];
+    debris.forEach(d => scene.remove(d.mesh));
+    debris = [];
+    const acts = crash ? 1 : 2;
+    ex = {
+      p, crash, hullBefore, ly: Math.round(run.dist / 10), fuel: Math.round(run.fuel), maxFuel: run.maxFuel,
+      actions: acts, maxActions: acts, nodes: makeNodes(p), gained: {}, crew: [], log: []
+    };
     land = null;
-    mode = 'result';
-    showScreen('result');
-    camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0);
+    mode = 'explore';
+    renderExplore();
+    showScreen('explore');
     fadeFlash();
   }
+
+  // ---------- 着陸後の探索 ----------
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const rarMult = (p) => [1, 1.6, 2.5][p.rar - 1];
+  const resName = (key) => key === 'blueprint' ? '設計図のかけら' : TYPES.find(t => t.key === key).res;
+  function addRes(key, n) {
+    save.res[key] = (save.res[key] || 0) + n;
+    ex.gained[key] = (ex.gained[key] || 0) + n;
+  }
+
+  function makeNodes(p) {
+    const n = 3 + (p.rar >= 2 ? 1 : 0) + (p.rar === 3 ? 1 : 0);
+    const slots = [[17, 30], [46, 24], [78, 32], [24, 72], [55, 70], [84, 74]]
+      .map(s => [s, Math.random()]).sort((a, b) => a[1] - b[1]).slice(0, n).map(s => s[0]);
+    const ws = { vein: 40, ruin: 20 + (p.rar - 1) * 8, village: 22, danger: 18 };
+    const total = Object.values(ws).reduce((a, b) => a + b, 0);
+    const pick = () => { let r = Math.random() * total; for (const k in ws) { r -= ws[k]; if (r < 0) return k; } return 'vein'; };
+    const kinds = slots.map(pick);
+    if (!kinds.includes('vein')) kinds[0] = 'vein';
+    return slots.map(([x, y], i) => ({
+      id: i, kind: kinds[i], x: x + rnd(-4, 4), y: y + rnd(-4, 4),
+      hidden: i > 0 && Math.random() < 0.35, done: false
+    }));
+  }
+
+  function explore(node) {
+    if (!ex || ex.actions <= 0 || node.done) return;
+    const p = ex.p, m = rarMult(p), k = p.type.key;
+    node.done = true; node.hidden = false; ex.actions--;
+    let text = '', cls = '';
+    if (node.kind === 'vein') {
+      const bonus = save.crew.some(c => c.key === 'miner') ? 1.3 : 1;
+      const n = Math.round(rnd(8, 14) * m * bonus);
+      addRes(k, n);
+      text = `${p.type.res} ×${n}${bonus > 1 ? '(採掘士のおかげで増量)' : ''}`;
+    } else if (node.kind === 'ruin') {
+      const n = Math.round(rnd(3, 7) * m);
+      addRes(k, n);
+      text = `${p.type.res} ×${n}`;
+      if (Math.random() < 0.35 + 0.15 * (p.rar - 1)) { addRes('blueprint', 1); text += '、設計図のかけら ×1'; }
+    } else if (node.kind === 'village') {
+      const n = Math.round(rnd(2, 4) * m);
+      addRes(k, n);
+      const left = CREW.filter(c => !save.crew.some(s => s.key === c.key));
+      if (left.length && Math.random() < 0.6) {
+        const c = left[Math.floor(Math.random() * left.length)];
+        save.crew.push({ key: c.key, planet: `${p.type.name} ${p.name}` });
+        ex.crew.push(c);
+        text = `${c.role}の${c.name}が仲間になった。お礼に${p.type.res} ×${n}`;
+        cls = 'crew';
+      } else {
+        text = `${left.length ? '誰もいなかった' : '集落の人から物資をもらった'}。${p.type.res} ×${n}`;
+      }
+    } else {
+      const n = Math.round(rnd(14, 22) * m);
+      addRes(k, n);
+      text = `${p.type.res} ×${n}`;
+      if (Math.random() < 0.45) {
+        const before = save.hull;
+        save.hull = Math.max(0, save.hull - 10);
+        text += `。落石で耐久 ${before} → ${save.hull}`;
+        cls = 'bad';
+      }
+    }
+    ex.log.push({ kind: node.kind, text, cls });
+    persist();
+    renderExplore();
+  }
+
+  const GLYPH = {
+    vein: '<path class="glyph" d="M12 5.5L16.5 12L12 18.5L7.5 12Z"/>',
+    ruin: '<path class="glyph" d="M6.5 7H17.5V8.8H6.5ZM7.5 9.6H9.3V17H7.5ZM11.1 9.6H12.9V17H11.1ZM14.7 9.6H16.5V17H14.7Z"/>',
+    village: '<path class="glyph" d="M6.5 17.5V11.5L12 6.5L17.5 11.5V17.5H13.6V13.8H10.4V17.5Z"/>',
+    danger: '<path class="glyph" fill-rule="evenodd" d="M12 5.5L18.5 17.5H5.5ZM11.2 10.2V14H12.8V10.2ZM11.2 15V16.4H12.8V15Z"/>',
+    unknown: '<text class="glyph" x="12" y="16.3" text-anchor="middle" font-size="12" font-weight="700">?</text>'
+  };
+
+  function renderExplore() {
+    const p = ex.p, c = p.type.css;
+    $('exTitle').textContent = `${p.type.name} ${p.name}`;
+    const tag = $('exTag');
+    tag.textContent = ex.crash ? '不時着' : '着陸成功';
+    tag.className = 'tag ' + (ex.crash ? 'bad' : 'ok');
+    const map = $('exMap');
+    map.style.background = `radial-gradient(120% 100% at 30% 15%, ${c}55, transparent 60%), radial-gradient(90% 80% at 80% 90%, ${c}33, transparent 70%), repeating-radial-gradient(circle at 40% 60%, rgba(255,255,255,0.035) 0 2px, transparent 2px 18px), #0a0e16`;
+    map.innerHTML = ex.nodes.map(n => {
+      const kind = n.hidden ? 'unknown' : n.kind;
+      const label = n.hidden ? '未調査' : KINDS[n.kind].name;
+      const cls = ['ex-node', n.hidden ? 'unknown' : '', !n.hidden && n.kind === 'danger' ? 'danger' : '', n.done ? 'done' : ''].join(' ');
+      const dis = (n.done || ex.actions <= 0) ? ' disabled' : '';
+      return `<button type="button" class="${cls}" data-id="${n.id}" style="left:${n.x.toFixed(1)}%;top:${n.y.toFixed(1)}%"${dis} aria-label="${label}${n.done ? '(調査済み)' : ''}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="ring" cx="12" cy="12" r="11"/>${GLYPH[kind]}</svg><span>${label}${n.done ? ' 済' : ''}</span></button>`;
+    }).join('');
+    $('exPips').innerHTML = Array.from({ length: ex.maxActions }, (_, i) => `<i class="pip${i < ex.actions ? ' on' : ''}"></i>`).join('');
+    $('exHint').textContent = ex.actions > 0
+      ? (ex.crash ? '不時着したため、探索できるのは1回だけです。' : '調べる地点をタップしてください。')
+      : '探索を終えました。';
+    $('exLog').innerHTML = ex.log.length
+      ? ex.log.map(l => `<li class="${l.cls}"><b>${KINDS[l.kind].name}</b> ${l.text}</li>`).join('')
+      : '<li class="empty">鉱脈は資源が多く、遺跡では設計図のかけら、集落では仲間に出会えることがあります。危険地帯は資源が多い代わりに機体が傷つくことがあります。</li>';
+    $('btnExDone').textContent = ex.actions > 0 ? '切り上げて帰還' : '拠点へ帰還';
+  }
+  $('exMap').addEventListener('click', (e) => {
+    const b = e.target.closest('.ex-node');
+    if (!b || b.disabled || !ex) return;
+    explore(ex.nodes[Number(b.dataset.id)]);
+  });
+
+  function showExploreResult() {
+    const p = ex.p;
+    $('resTitle').textContent = `${p.type.name} ${p.name}`;
+    const tag = $('resTag');
+    tag.textContent = ex.crash ? '不時着' : '着陸成功';
+    tag.className = 'tag ' + (ex.crash ? 'bad' : 'ok');
+    const got = Object.keys(ex.gained).map(k => `${resName(k)} ×${ex.gained[k]}`).join('、') || 'なし';
+    const rows = [
+      ['到達距離', `${ex.ly.toLocaleString('ja-JP')} 光年`],
+      ['星のレア度', `<span class="stars">${'★'.repeat(p.rar)}${'☆'.repeat(3 - p.rar)}</span>`],
+      ['探索', `${ex.maxActions - ex.actions} / ${ex.maxActions} 回${ex.crash ? '(不時着で1回に減少)' : ''}`],
+      ['獲得資源', got],
+      ['仲間', ex.crew.length ? ex.crew.map(c => `${c.role} ${c.name}`).join('、') : 'なし'],
+      ['残り燃料', `${ex.fuel} / ${ex.maxFuel}`],
+      ['耐久', ex.hullBefore === save.hull ? `${save.hull}(損傷なし)` : `${ex.hullBefore} → ${save.hull}`]
+    ];
+    $('resKv').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+    clearWorld();
+    ex = null;
+    mode = 'result';
+    camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0);
+    showScreen('result');
+  }
+  $('btnExDone').addEventListener('click', () => { if (ex) showExploreResult(); });
   function fadeFlash() {
     const f = $('flash'); let o = parseFloat(f.style.opacity || '0');
     const step = () => { o -= 0.05; f.style.opacity = Math.max(0, o); if (o > 0) requestAnimationFrame(step); };
@@ -962,6 +1146,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
     $('scrBase').hidden = name !== 'base';
     $('scrResult').hidden = name !== 'result';
     $('scrSettings').hidden = name !== 'settings';
+    $('scrExplore').hidden = name !== 'explore';
     $('hud').hidden = name !== 'flying';
     if (name === 'base') renderBase();
   }
@@ -975,7 +1160,14 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
     if (fx.steer < 1) chips.push('旋回性ダウン(耐久70未満)');
     if (fx.burn > 1) chips.push('燃費悪化(耐久40未満)');
     $('bChips').innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
-    $('resList').innerHTML = TYPES.map(t => `<li><span><span class="dot" style="background:${t.css}"></span>${t.res}<small style="color:var(--muted)">(${t.name})</small></span><b>${save.res[t.key] || 0}</b></li>`).join('');
+    $('resList').innerHTML = TYPES.map(t => `<li><span><span class="dot" style="background:${t.css}"></span>${t.res}<small style="color:var(--muted)">(${t.name})</small></span><b>${save.res[t.key] || 0}</b></li>`).join('')
+      + `<li><span><span class="dot" style="background:var(--amber)"></span>設計図のかけら<small style="color:var(--muted)">(遺跡)</small></span><b>${save.res.blueprint || 0}</b></li>`;
+    $('crewList').innerHTML = CREW.map(c => {
+      const got = save.crew.find(s => s.key === c.key);
+      return got
+        ? `<li><span>${c.role} ${c.name}<span class="crew-note">${c.note} / ${got.planet}で出会った</span></span><b>仲間</b></li>`
+        : `<li><span style="color:var(--muted)">${c.role}(未発見)<span class="crew-note">集落で出会えることがある</span></span><b>—</b></li>`;
+    }).join('');
     const total = TYPES.reduce((s, t) => s + (save.res[t.key] || 0), 0);
     const dead = save.hull <= 0;
     $('btnLaunch').disabled = dead;
@@ -1035,7 +1227,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
   $('btnSettings').addEventListener('click', () => { syncSettings(); showScreen('settings'); });
   $('btnSetClose').addEventListener('click', () => showScreen('base'));
   $('btnSetReset').addEventListener('click', () => { SETTINGS.forEach(s => { cfg[s.key] = s.def; }); cfg.invX = cfg.invY = false; persist(); syncSettings(); });
-  $('btnWipe').addEventListener('click', () => { save.hull = 100; save.res = {}; persist(); showScreen('base'); });
+  $('btnWipe').addEventListener('click', () => { save.hull = 100; save.res = {}; save.crew = []; persist(); showScreen('base'); });
 
   // ---------- ループ ----------
   resetRun();
@@ -1046,6 +1238,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
     last = now;
     if (mode === 'flying') updateFlying(dt);
     else if (mode === 'landing') updateLanding(dt);
+    else if (mode === 'explore') { if (ex) ex.p.body.rotation.y += ex.p.spin * dt * 0.4; }
     else {
       updateStreaks(70 * dt, 70);
       camera.rotation.z += dt * 0.02;
