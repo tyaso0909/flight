@@ -230,16 +230,14 @@ function showExploreResult() {
     ['到達距離', `${ex.ly.toLocaleString('ja-JP')} 光年`],
     ['星のレア度', `<span class="stars">${stars(p.rar)}</span>`],
     ['探索', `${ex.maxActions - ex.actions} / ${ex.maxActions} 回${ex.crash ? '(不時着で1回に減少)' : ''}`],
-    [`持ち帰った素材<small>${keptN} / ${ex.cap}</small>`, list(kept, '+')]
-  ];
-  if (leftN) rows.push([`置いてきた素材<small>積載オーバー</small>`, list(left, '−')]);
-  rows.push(
     ['仲間', ex.crew.length ? ex.crew.map(c => `${c.role} ${c.name}`).join('、') : 'なし'],
     ['残り燃料', `${ex.fuel} / ${ex.maxFuel}`],
     ['耐久', ex.hullBefore === save.hull ? `${save.hull}(損傷なし)` : `${ex.hullBefore} → ${save.hull}`]
-  );
+  ];
   $('resKv').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
-  $('resKv').classList.toggle('has-left', leftN > 0);
+  // 右側:持ち帰った素材と、積載オーバーで置いてきた素材
+  $('resLoot').innerHTML = `<h2>持ち帰った素材<span class="loot-n">${keptN} / ${ex.cap}</span></h2>${list(kept, '+')}`
+    + (leftN ? `<h2 class="left">置いてきた素材<span class="loot-n">積載オーバー ${leftN}</span></h2><div class="left-list">${list(left, '−')}</div>` : '');
   clearWorld();
   G.ex = null;
   G.mode = 'result';

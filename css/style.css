@@ -347,3 +347,90 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .ws-tag { font-size: 0.72em; padding: 0.05em 0.6em; border-radius: 999px; border: 1px solid var(--ice); color: var(--ice); }
 
 @media (prefers-reduced-motion: reduce) { #warn { animation: none; } }
+
+/* ===== 画面のレイアウト:見出し(上)・スクロールする中身(中)・操作ボタン(下) ===== */
+#app { --st: 0px; --sr: 0px; --sb: 0px; --sl: 0px; font-size: clamp(12.5px, calc(var(--lh) * 0.037), 17px); }
+* { -webkit-tap-highlight-color: transparent; }
+.panel { display: flex; flex-direction: column; overflow: hidden; padding: 0; max-height: 90%; -webkit-user-select: none; user-select: none; touch-action: none; }
+.pn-head { flex: none; display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5em 1em; flex-wrap: wrap; padding: 0.9em 1.3em 0.6em; border-bottom: 1px solid var(--edge); }
+.pn-title { min-width: 0; }
+.pn-title h1 { margin: 0; font-size: 1.35em; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pn-head-side { margin: 0; min-width: 0; }
+.pn-head .notice { margin: 0; padding: 0.35em 0.8em; }
+.pn-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding: 0.8em 1.3em; }
+.pn-body.fill { overflow: hidden; display: flex; flex-direction: column; }
+.pn-body.fill > * { flex: 1 1 auto; min-height: 0; }
+.pn-foot { flex: none; display: flex; align-items: center; gap: 0.5em; padding: 0.55em 1.3em 0.7em; border-top: 1px solid var(--edge); background: rgba(8, 11, 18, 0.6); overflow-x: auto; touch-action: pan-x; }
+.pn-spacer { flex: 1 1 auto; }
+.foot-hint { flex: 1 1 auto; margin: 0; color: var(--muted); font-size: 0.85em; min-width: 0; }
+
+/* スマホ:各画面を全画面のシートにし、ノッチやホームバーの分だけ内側に寄せる */
+#app.compact .panel { left: 0; top: 0; transform: none; width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; background: rgba(9, 12, 19, 0.95); }
+#app.compact .pn-head { padding: calc(0.45em + var(--st)) calc(1em + var(--sr)) 0.45em calc(1em + var(--sl)); align-items: center; }
+#app.compact .pn-body { padding: 0.6em calc(1em + var(--sr)) 0.6em calc(1em + var(--sl)); }
+#app.compact .pn-foot { padding: 0.45em calc(1em + var(--sr)) calc(0.45em + var(--sb)) calc(1em + var(--sl)); }
+#app.compact .pn-title { display: flex; align-items: baseline; gap: 0.7em; }
+#app.compact .pn-title .eyebrow { margin: 0; }
+#app.compact .pn-title h1 { font-size: 1.2em; }
+#app.compact .note { font-size: 0.86em; }
+#app.compact .up-eff, #app.compact .sh-desc, #app.compact .sh-stats, #app.compact .sh-cost { font-size: 0.86em; }
+
+/* タップしやすい大きさ(44px以上) */
+.btn { min-height: 44px; padding: 0.35em 1.1em; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; white-space: nowrap; flex: none; touch-action: manipulation; }
+.btn small { font-size: 0.68em; font-weight: 400; opacity: 0.75; margin-top: 0.1em; }
+.btn.big { min-width: 9em; font-size: 1.05em; }
+.btn.ghost { background: none; }
+.btn:active:not(:disabled) { transform: translateY(1px); filter: brightness(1.1); }
+.chip-btn { min-height: 40px; padding: 0.3em 1em; touch-action: manipulation; }
+.tabs button { min-height: 38px; touch-action: manipulation; }
+.ex-node { min-width: 52px; min-height: 52px; touch-action: manipulation; }
+.sh-row { min-height: 44px; }
+
+/* 飛行中の計器盤もノッチ・ホームバーを避ける */
+.topbar { padding: calc(1.5% + var(--st)) calc(2.5% + var(--sr)) 0 calc(2.5% + var(--sl)); }
+#console { padding-bottom: calc(1.2% + var(--sb)); }
+#btnBoost { right: calc(3.5% + var(--sr)); bottom: calc(7% + var(--sb)); }
+#stickHint { left: calc(4% + var(--sl)); }
+#stickZone { width: 38%; }
+
+/* 拠点 */
+.chips-row { display: flex; flex-wrap: wrap; gap: 0.4em; margin-bottom: 0.4em; }
+.sp-top { margin-top: 0.9em !important; }
+.crew-grid { list-style: none; margin: 0 0 0.6em; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(8.2em, 1fr)); gap: 0.35em; }
+.crew { border: 1px solid var(--edge); border-radius: 6px; padding: 0.35em 0.55em; display: grid; gap: 0.05em; font-size: 0.85em; min-width: 0; }
+.crew-role { font-size: 0.8em; color: var(--muted); }
+.crew b { color: var(--muted); }
+.crew.on { border-color: rgba(127, 224, 160, 0.45); }
+.crew.on b { color: var(--ok); }
+.crew small { font-size: 0.78em; color: var(--muted); line-height: 1.35; }
+.howto { margin-top: 0.4em; border: 1px solid var(--edge); border-radius: 6px; padding: 0 0.7em; }
+.howto summary { cursor: pointer; font-size: 0.88em; color: var(--muted); min-height: 40px; display: flex; align-items: center; }
+.howto .note:first-of-type { margin-top: 0; }
+.howto .note:last-child { margin-bottom: 0.6em; }
+.pwa-hint { border-left: 2px solid var(--ice); padding-left: 0.6em; }
+
+/* 格納庫・工房:下の所持素材は1行にして横にスクロール */
+.hangar { width: min(95%, 1000px); height: min(90%, 640px); padding: 0; }
+.hangar .hg-grid { height: 100%; min-height: 0; }
+.workshop { height: min(90%, 640px); }
+.pn-foot .hg-res { flex: 1 1 auto; min-width: 0; max-height: none; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; touch-action: pan-x; padding-bottom: 2px; scrollbar-width: none; }
+.pn-foot .hg-res::-webkit-scrollbar { display: none; }
+.pn-foot .hg-res > span { flex: none; }
+#wsWho { max-width: 36em; }
+
+/* 探索:地図を中身の高さいっぱいに */
+.explore { width: min(95%, 1000px); height: min(90%, 620px); }
+.explore .ex-grid { height: 100%; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: stretch; }
+.explore .ex-map { aspect-ratio: auto; height: 100%; }
+.explore .ex-side { overflow-y: auto; min-height: 0; touch-action: pan-y; overscroll-behavior: contain; }
+.explore .ex-log { margin-top: 0.4em; }
+
+/* 航行記録:左に記録、右に素材 */
+.res-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.4em; align-items: start; }
+.res-cols .kv { margin: 0; }
+.res-loot h2 { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6em; margin: 0 0 0.4em; font-size: 0.85em; color: var(--muted); font-weight: 400; }
+.res-loot h2.left { margin-top: 0.9em; color: var(--warn); }
+.loot-n { font-family: var(--font-inst); color: var(--amber); }
+.res-loot h2.left .loot-n, .left-list .dq { color: var(--warn); }
+.res-loot .drops { gap: 0.3em; max-width: 20em; }
+.res-loot h2 { max-width: 24em; }

@@ -25,6 +25,7 @@ export function renderBase() {
   if (fx.low70) chips.push('旋回性ダウン(耐久70%未満)');
   if (fx.low40) chips.push('燃費悪化(耐久40%未満)');
   $('bChips').innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
+  $('bChips').hidden = !chips.length;
 
   // 素材の表(行=星の属性、列=レア度)
   const tiers = Array.from({ length: MAX_TIER }, (_, i) => i + 1);
@@ -38,10 +39,15 @@ export function renderBase() {
   <p class="bp-line"><span><span class="dot" style="background:var(--amber)"></span>設計図のかけら<small>(遺跡)</small></span><b>${save.res.blueprint || 0}</b></p>`;
   $('crewList').innerHTML = CREW.map(c => {
     const got = save.crew.find(s => s.key === c.key);
-    return got
-      ? `<li><span>${c.role} ${c.name}<span class="crew-note">${c.note} / ${got.planet}で出会った</span></span><b>仲間</b></li>`
-      : `<li><span style="color:var(--muted)">${c.role}(未発見)<span class="crew-note">集落で出会えることがある</span></span><b>—</b></li>`;
+    return `<li class="crew${got ? ' on' : ''}" title="${got ? `${got.planet}で出会った` : '集落で出会えることがある'}">
+      <span class="crew-role">${c.role}</span><b>${got ? c.name : '未発見'}</b>
+      <small>${got ? c.note : '集落で出会えることがある'}</small>
+    </li>`;
   }).join('');
+  // ホーム画面に追加していないスマホには、全画面で遊ぶ方法を出す
+  const standalone = (window.matchMedia && (matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches)) || navigator.standalone;
+  const touch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  $('pwaHint').hidden = !touch || !!standalone;
 
   const total = TYPES.reduce((s, t) => s + (save.res[resKey(t.key, 1)] || 0), 0);
   const dead = save.hull <= 0;
