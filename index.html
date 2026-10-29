@@ -80,49 +80,87 @@
   <div id="hitFx"></div>
   <div id="flash"></div>
 
-  <!-- 拠点 -->
-  <section id="scrBase" class="panel" aria-labelledby="baseTitle">
-    <header class="pn-head">
-      <div class="pn-title"><p class="eyebrow">拠点</p><h1 id="baseTitle">出撃準備</h1></div>
-      <div class="pn-head-side head-tools">
-        <div id="baseNotice"></div>
-        <button id="btnMute" class="chip-btn" type="button" aria-pressed="false">音 ON</button>
+  <!-- 拠点(ステーションの中。3Dの部屋の上にボタンを重ねる) -->
+  <section id="scrBase" class="base-hud" aria-labelledby="baseTitle">
+    <div id="stLayer" class="st-layer"></div>
+    <header class="bh-top">
+      <div class="bh-title"><p class="eyebrow">拠点</p><h1 id="baseTitle">ステーション</h1></div>
+      <div class="head-tools">
+        <button id="btnStorage" class="chip-btn" type="button">倉庫</button>
         <button id="btnRecords" class="chip-btn" type="button">記録</button>
         <button id="btnSettings" class="chip-btn" type="button">調整</button>
+        <button id="btnMute" class="chip-btn" type="button" aria-pressed="false">音 ON</button>
       </div>
     </header>
-    <div class="pn-body">
-      <div class="cols">
-        <div>
-          <h2>機体</h2>
-          <div class="ship-name"><span id="bShipName">小型偵察機</span><small id="bShipSub">強化 Lv 0 / 30</small></div>
-          <div class="stat"><span>燃料</span><div class="bar fuel"><i id="bFuelBar"></i></div><span id="bFuel" class="v">100</span></div>
-          <div class="stat"><span>耐久</span><div class="bar hull"><i id="bHullBar"></i></div><span id="bHull" class="v">100</span></div>
-          <div class="stat"><span>積載</span><div class="bar cargo"><i id="bCargoBar"></i></div><span id="bCargo" class="v">40</span></div>
-          <p id="bCargoNote" class="stat-note"></p>
-          <div id="bChips" class="chips-row"></div>
-          <h2 class="sp-top">仲間</h2>
-          <ul id="crewList" class="crew-grid"></ul>
-          <details class="howto">
-            <summary>遊び方と操作</summary>
-            <p class="note"><b>遊び方</b> 傾けて操縦し、ブーストで速度を保ちます。押さないと減速し、速度計の赤い線を下回ると近くの星に引き寄せられます。降りたい星の近くではブーストをやめ、通り過ぎたい星はブーストで振り切ります。燃料が切れると不時着して機体が傷つき、着陸後に探索できる回数も減ります。</p>
-            <p class="note" id="ctrlNote"></p>
-          </details>
-          <p id="pwaHint" class="note pwa-hint" hidden>ホーム画面に追加すると、ブラウザのバーが消えて全画面で遊べます(iPhone は共有ボタン → 「ホーム画面に追加」)。</p>
-        </div>
-        <div>
-          <h2>持ち帰った素材</h2>
-          <div id="resList" class="res-wrap"></div>
-        </div>
-      </div>
-    </div>
-    <footer class="pn-foot">
+    <aside class="ship-card" aria-label="今の船">
+      <div class="ship-name"><span id="bShipName">小型偵察機</span><small id="bShipSub">強化 Lv 0 / 30</small></div>
+      <div class="mini-stat"><span>燃料</span><div class="bar fuel"><i id="bFuelBar"></i></div><b id="bFuel">100</b></div>
+      <div class="mini-stat"><span>耐久</span><div class="bar hull"><i id="bHullBar"></i></div><b id="bHull">100</b></div>
+      <div class="mini-stat"><span>積載</span><div class="bar cargo"><i id="bCargoBar"></i></div><b id="bCargo">40</b></div>
+      <p id="bCargoNote" class="stat-note"></p>
+      <div id="bChips" class="chips-row"></div>
+      <div id="baseNotice"></div>
+      <p class="bh-best">最高 <b id="bBest">0</b> 光年<span class="sep">・</span><b id="bCredits">0</b> Cr<span id="bWarp"></span></p>
+    </aside>
+    <footer class="pn-foot bh-foot">
       <button id="btnLaunch" class="btn primary big" type="button">出撃する</button>
       <button id="btnHangar" class="btn" type="button">格納庫<small>強化・パーツ・造船</small></button>
       <button id="btnWorkshop" class="btn" type="button">工房<small>探索装備</small></button>
       <button id="btnDispatch" class="btn" type="button">派遣<small id="dispatchBadge">仲間を送り出す</small></button>
+      <button id="btnShop" class="btn shop-btn" type="button" hidden>商人<small>買い物</small></button>
       <button id="btnQuickFix" class="btn" type="button" hidden>応急修理<small>無料</small></button>
       <button id="btnFullFix" class="btn" type="button" hidden>完全修理<small>★1素材20</small></button>
+    </footer>
+  </section>
+
+  <!-- 倉庫(素材と仲間の一覧・遊び方) -->
+  <section id="scrStorage" class="panel" hidden aria-labelledby="stoTitle">
+    <header class="pn-head">
+      <div class="pn-title"><p class="eyebrow">倉庫</p><h1 id="stoTitle">素材と仲間</h1></div>
+      <div class="pn-head-side"><span id="stoWallet" class="wallet"></span></div>
+    </header>
+    <div class="pn-body">
+      <div class="cols">
+        <div>
+          <h2>持ち帰った素材</h2>
+          <div id="resList" class="res-wrap"></div>
+        </div>
+        <div>
+          <h2>仲間</h2>
+          <ul id="crewList" class="crew-grid"></ul>
+          <details class="howto">
+            <summary>遊び方と操作</summary>
+            <p class="note"><b>遊び方</b> 傾けて操縦し、ブーストで速度を保ちます。押さないと減速し、速度計の赤い線を下回ると近くの星に引き寄せられます。降りたい星の近くではブーストをやめ、通り過ぎたい星はブーストで振り切ります。燃料が切れると不時着して機体が傷つき、着陸後に探索できる回数も減ります。</p>
+            <p class="note"><b>拠点</b> 窓の外の船をタップすると格納庫、星図のテーブルは派遣、作業台は工房です。仲間をタップすると話しかけられます。商人が来ているときは、商人をタップすると買い物ができます。</p>
+            <p class="note" id="ctrlNote"></p>
+          </details>
+          <p id="pwaHint" class="note pwa-hint" hidden>ホーム画面に追加すると、ブラウザのバーが消えて全画面で遊べます(iPhone は共有ボタン → 「ホーム画面に追加」)。</p>
+        </div>
+      </div>
+    </div>
+    <footer class="pn-foot">
+      <button id="btnStoBack" class="btn" type="button">拠点へ戻る</button>
+    </footer>
+  </section>
+
+  <!-- 行商人の店 -->
+  <section id="scrShop" class="panel shop" hidden aria-labelledby="shopTitle">
+    <header class="pn-head">
+      <div class="pn-title"><p class="eyebrow">行商人</p><h1 id="shopTitle">ガランの店</h1></div>
+      <div class="tabs" role="tablist" aria-label="店の画面">
+        <button id="tabBuy" type="button" role="tab" aria-selected="true" aria-controls="shopBuy">買う</button>
+        <button id="tabSell" type="button" role="tab" aria-selected="false" aria-controls="shopSell">売る</button>
+      </div>
+    </header>
+    <div class="pn-body">
+      <p class="shop-say"><b>ガラン</b><span id="shopSay">いらっしゃい!</span></p>
+      <div id="shopBuy" role="tabpanel"></div>
+      <div id="shopSell" role="tabpanel" hidden></div>
+    </div>
+    <footer class="pn-foot">
+      <button id="btnShopBack" class="btn" type="button">拠点へ戻る</button>
+      <span class="wallet">所持 <b id="shopCr">0</b> Cr<span class="sep">・</span>ワープセル <b id="shopWarp">0</b></span>
+      <span id="shopLeave" class="foot-hint"></span>
     </footer>
   </section>
 

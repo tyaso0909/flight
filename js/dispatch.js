@@ -77,7 +77,7 @@ let activeSig = '';
 function renderActive() {
   const now = Date.now();
   // 形が変わらないときは、残り時間とバーだけ書き換える(ボタンを押している途中に作り直さない)
-  const sig = save.dispatch.map(d => `${d.id}:${now >= d.end}`).join('|') + (lastGot ? '+got' : '');
+  const sig = save.dispatch.map(d => `${d.id}:${now >= d.end}`).join('|') + (lastGot ? '+got' : '') + `w${save.items.warp}`;
   if (sig === activeSig) {
     save.dispatch.forEach(d => {
       const card = document.querySelector(`.dp-card[data-id="${d.id}"]`);
@@ -100,7 +100,8 @@ function renderActive() {
       <div class="bar dp-bar"><i style="width:${pct.toFixed(1)}%"></i></div>
       <div class="dp-bottom">
         <span class="dp-time">${done ? '帰還しました' : `あと ${fmtTime(d.end - now)}`}</span>
-        ${done ? `<button class="btn primary" type="button" data-receive="${d.id}">受け取る</button>` : ''}
+        ${done ? `<button class="btn primary" type="button" data-receive="${d.id}">受け取る</button>`
+    : save.items.warp ? `<button class="btn" type="button" data-warp="${d.id}">ワープセルを使う<small>残り時間が半分に(所持 ${save.items.warp})</small></button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -181,9 +182,23 @@ function receive(id) {
   sfx.get(Math.max(1, ...Object.keys(d.loot).map(resTier)));
 }
 
+// ワープセル:残り時間を半分にする。残り10分以下ならすぐ帰ってくる
+function useWarp(id) {
+  const d = save.dispatch.find(x => x.id === id), now = Date.now();
+  if (!d || now >= d.end || save.items.warp <= 0) return;
+  const left = d.end - now;
+  d.end = left <= 10 * 60000 ? now : now + left / 2;
+  save.items.warp--;
+  persist();
+  activeSig = '';
+  renderActive();
+  sfx.launch();
+}
 $('dpActive').addEventListener('click', (e) => {
   const b = e.target.closest('[data-receive]');
   if (b) receive(b.dataset.receive);
+  const w = e.target.closest('[data-warp]');
+  if (w) useWarp(w.dataset.warp);
 });
 $('dpForm').addEventListener('click', (e) => {
   const b = e.target.closest('button');

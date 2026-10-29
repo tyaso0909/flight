@@ -17,6 +17,9 @@ const newStats = () => ({
   typesLanded: {}, specials: {}, tier5: {}
 });
 
+// 行商人:here = 来ているか、until = 帰る時刻、flights = 帰るまでの出撃回数、last = 最後に来た(帰った)時刻
+const newMerchant = () => ({ here: false, met: false, until: 0, flights: 0, last: 0, seenFlights: 0, stock: [] });
+
 // ships = 持っている船(船ごとに強化・付けているパーツ・耐久を持つ)、active = 今乗っている船
 export const save = {
   v: SAVE_VERSION,
@@ -30,7 +33,10 @@ export const save = {
   best: 0,       // これまでに到達した一番遠い距離(光年)
   dispatch: [],  // 派遣中の一覧
   stats: newStats(),
-  ach: []        // 達成した実績
+  ach: [],       // 達成した実績
+  credits: 0,    // 商人とのやりとりに使うお金(Cr)
+  items: { warp: 0 },  // 使うアイテム(ワープセル = 派遣の時短)
+  merchant: newMerchant()
 };
 // save.ship = 今乗っている船、save.hull = その耐久(保存はされない、ships の中身を指す)
 Object.defineProperty(save, 'ship', {
@@ -123,6 +129,9 @@ export function resetSave() {
   save.dispatch = [];
   save.stats = newStats();
   save.ach = [];
+  save.credits = 0;
+  save.items = { warp: 0 };
+  save.merchant = newMerchant();
   persist();
 }
 
@@ -186,6 +195,14 @@ function loadSave(s) {
   TYPES.forEach(t => { if (save.res[`${t.key}5`]) stats.tier5[t.key] = true; });
   save.stats = stats;
   save.ach = Array.isArray(s.ach) ? s.ach.filter(k => typeof k === 'string') : [];
+  save.credits = Number.isFinite(s.credits) ? Math.max(0, Math.floor(s.credits)) : 0;
+  save.items = { warp: s.items && Number.isInteger(s.items.warp) ? Math.max(0, s.items.warp) : 0 };
+  const m = newMerchant();
+  if (s.merchant && typeof s.merchant === 'object') {
+    for (const k in m) if (typeof m[k] === typeof s.merchant[k]) m[k] = s.merchant[k];
+    m.stock = Array.isArray(s.merchant.stock) ? s.merchant.stock.filter(x => x && typeof x.id === 'string') : [];
+  }
+  save.merchant = m;
   save.dispatch = Array.isArray(s.dispatch)
     ? s.dispatch.filter(d => d && ships.some(sh => sh.id === d.ship) && d.ship !== save.active && hasCrew(d.crew) && typeof d.end === 'number')
     : [];

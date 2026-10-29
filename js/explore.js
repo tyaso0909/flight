@@ -107,6 +107,8 @@ function explore(node) {
     drops = [drop(p)];
     const bp = 0.35 + 0.15 * (p.rar - 1) + (hasGear('goggles') ? 0.15 : 0);
     if (Math.random() < bp) { addLoot(BLUEPRINT.key, 1); drops.push({ key: BLUEPRINT.key, n: 1 }); }
+    // まれにワープセル(派遣の時短に使う。積み荷には数えない)
+    if (Math.random() < 0.05) { save.items.warp++; notes.push({ text: 'ワープセルを見つけた(派遣の時間を短くできる)', cls: 'good' }); }
   } else if (node.kind === 'village') {
     drops = [drop(p, { mult: 0.6 })];
     const left = CREW.filter(c => !hasCrew(c.key));

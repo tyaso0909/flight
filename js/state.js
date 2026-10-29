@@ -1,5 +1,5 @@
 // 画面をまたいで共有するゲームの状態
-// mode: base | hangar | workshop | dispatch | settings | flying | landing | explore | result
+// mode: base | storage | shop | hangar | workshop | dispatch | records | settings | flying | landing | explore | result
 export const G = {
   mode: 'base',
   run: {},     // 飛行中の状態(速度・燃料・位置など)

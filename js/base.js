@@ -1,12 +1,16 @@
 // 拠点(出撃準備・修理)と「数値の調整」画面
 import { $, clamp } from './dom.js';
 import { SETTINGS, TYPES, CREW, SHIPS, MAX_LV, UPGRADES, MAX_TIER, FULL_FIX_COST, resKey } from './data.js';
-import { cfg, save, persist, shipStats, maxHull, hullEffects, totalLv, resetSave, cargoCap, hasGear, crewBusy } from './save.js';
+import { cfg, save, persist, shipStats, maxHull, hullEffects, totalLv, resetSave, cargoCap, hasGear, hasCrew, crewBusy } from './save.js';
 import { G } from './state.js';
 import { onShow, showScreen } from './ui.js';
 import { tilt, onFirstTilt } from './input.js';
 import { launch } from './flight.js';
-import { applyVolume } from './audio.js';
+import { applyVolume, sfx } from './audio.js';
+import { refreshStation, merchantInstant, setStationActions, setStationContext, setTagSub, stationTap, someoneSays, stationSay } from './station.js';
+import { merchantTick, openShop } from './merchant.js';
+import { doneCount } from './dispatch.js';
+import { SOLO } from './talk.js';
 
 const QUICK_FIX_RATE = 0.3; // 応急修理で戻る耐久(最大耐久に対する割合)
 
@@ -28,6 +32,23 @@ export function renderBase() {
   $('bChips').innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
   $('bChips').hidden = !chips.length;
 
+  $('bBest').textContent = (save.best || 0).toLocaleString('ja-JP');
+  $('bCredits').textContent = save.credits.toLocaleString('ja-JP');
+  $('bWarp').innerHTML = save.items.warp ? `<span class="sep">・</span>ワープセル <b>${save.items.warp}</b>` : '';
+  $('btnShop').hidden = !save.merchant.here;
+  setTagSub('hangar', save.hull < mh * 0.7 ? '要修理' : '', save.hull < mh * 0.7);
+
+  const total = TYPES.reduce((s, t) => s + (save.res[resKey(t.key, 1)] || 0), 0);
+  const dead = save.hull <= 0;
+  $('btnLaunch').disabled = dead;
+  $('btnQuickFix').hidden = save.hull >= Math.ceil(mh * QUICK_FIX_RATE);
+  $('btnFullFix').hidden = save.hull >= mh;
+  $('btnFullFix').disabled = total < FULL_FIX_COST;
+  $('baseNotice').innerHTML = dead ? '<div class="notice">耐久が0のため出撃できません。修理してください。</div>' : '';
+}
+
+// 倉庫:素材の表・仲間の一覧・遊び方
+function renderStorage() {
   // 素材の表(行=星の属性、列=レア度)
   const tiers = Array.from({ length: MAX_TIER }, (_, i) => i + 1);
   $('resList').innerHTML = `<table class="res-grid">
@@ -50,24 +71,74 @@ export function renderBase() {
   const touch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
   $('pwaHint').hidden = !touch || !!standalone;
 
-  const total = TYPES.reduce((s, t) => s + (save.res[resKey(t.key, 1)] || 0), 0);
-  const dead = save.hull <= 0;
-  $('btnLaunch').disabled = dead;
-  $('btnQuickFix').hidden = save.hull >= Math.ceil(mh * QUICK_FIX_RATE);
-  $('btnFullFix').hidden = save.hull >= mh;
-  $('btnFullFix').disabled = total < FULL_FIX_COST;
-  $('baseNotice').innerHTML = dead ? '<div class="notice">耐久が0のため出撃できません。修理してください。</div>' : '';
+  $('stoWallet').innerHTML = `<b>${save.credits.toLocaleString('ja-JP')}</b> Cr<span class="sep">・</span>ワープセル <b>${save.items.warp}</b>`;
   $('ctrlNote').innerHTML = tilt.ok
     ? '<b>操作</b> 端末を傾けて操縦します。出撃した瞬間の持ち方がまっすぐの基準になります。'
     : '<b>操作</b> 傾きセンサーが使えないため、左下のドラッグで操縦します(パソコンは矢印キーとスペース)。スマホで傾き操作を試すには、HTTPSのサイトで開いてください。';
 }
-onShow('base', renderBase);
-onFirstTilt(() => { if (G.mode === 'base') renderBase(); });
+onShow('storage', renderStorage);
+onFirstTilt(() => { if (G.mode === 'storage') renderStorage(); });
+$('btnStorage').addEventListener('click', () => { G.mode = 'storage'; showScreen('storage'); });
+$('btnStoBack').addEventListener('click', () => { G.mode = 'base'; showScreen('base'); });
 
 $('btnLaunch').addEventListener('click', launch);
 $('btnHangar').addEventListener('click', () => { G.mode = 'hangar'; showScreen('hangar'); });
 $('btnWorkshop').addEventListener('click', () => { G.mode = 'workshop'; showScreen('workshop'); });
 $('btnDispatch').addEventListener('click', () => { G.mode = 'dispatch'; showScreen('dispatch'); });
+$('btnShop').addEventListener('click', openShop);
+
+// ---------- ステーションの中 ----------
+const go = (mode) => () => { G.mode = mode; showScreen(mode); };
+setStationActions({
+  hangar: go('hangar'), dispatch: go('dispatch'), workshop: go('workshop'), shop: openShop,
+  // 仲間をタップしたときのセリフ(状況に合わせて少し変える)
+  lineFor(key) {
+    const extra = [];
+    if (save.hull < maxHull() * 0.5) extra.push({ armor: '……装甲がへこんでいる。修理しろ', engineer: '耐久が低いと燃費が悪くなりますよ', miner: '船がボロボロだぜ、直してから行こう' }[key]);
+    if (doneCount()) extra.push({ navigator: '派遣の仲間が帰ってきたよ。星図のテーブルへ', miner: '派遣組が帰ってきたぞ!' }[key]);
+    if (save.merchant.here) extra.push({ toolsmith: 'ガランさんの店、のぞいてみようよ!', shipwright: 'ガランさんは余った素材を買ってくれるわ' }[key]);
+    const f = extra.filter(Boolean);
+    return f.length && Math.random() < 0.6 ? f : SOLO[key];
+  }
+});
+setStationContext(() => {
+  const now = Date.now();
+  return {
+    hullLow: save.hull < maxHull() * 0.5,
+    dispatchDone: doneCount() > 0,
+    dispatchGoing: save.dispatch.some(d => now < d.end),
+    merchant: save.merchant.here,
+    best: save.best || 0,
+    tier5: Object.keys(save.stats.tier5).length > 0,
+    oneShip: save.ships.length < 2,
+    hasTool: hasCrew('toolsmith'),
+    crewCount: save.crew.length
+  };
+});
+$('scene').addEventListener('click', (e) => {
+  if (G.mode === 'base' && stationTap(e.clientX, e.clientY)) sfx.click();
+});
+
+// 拠点に入るたび:商人の出入り・仲間の出入りを確認して、部屋に反映する
+let firstVisit = true, knownCrew = null;
+onShow('base', () => {
+  const ev = merchantTick();
+  refreshStation();
+  if (firstVisit && save.merchant.here) merchantInstant();
+  if (ev === 'arrive' && !firstVisit) setTimeout(() => someoneSays('あ、行商人のガランさんの船だ!', 'ピピッ。行商人ガランの船が到着シマシタ'), 3800);
+  // 新しく仲間になった人のあいさつ
+  const now = save.crew.map(c => c.key);
+  if (knownCrew) {
+    const fresh = now.filter(k => !knownCrew.includes(k) && !crewBusy(k));
+    fresh.forEach((k, i) => setTimeout(() => {
+      const c = CREW.find(x => x.key === k);
+      stationSay(k, `はじめまして!${c.role}の${c.name}です。よろしく!`);
+    }, 900 + i * 2600));
+  } else if (doneCount()) setTimeout(() => someoneSays('派遣の仲間が帰ってきたよ!星図のテーブルで受け取って', 'ピピッ。派遣の船が帰還シマシタ'), 1500);
+  knownCrew = now;
+  firstVisit = false;
+  renderBase();
+});
 
 // 派遣ボタンに、帰ってきた件数・派遣中の件数を出す(拠点にいる間は15秒ごとに更新)
 function renderDispatchBadge() {
@@ -75,9 +146,15 @@ function renderDispatchBadge() {
   const b = $('dispatchBadge');
   b.textContent = done ? `${done}件 帰還!` : going ? `${going}件 派遣中` : '仲間を送り出す';
   $('btnDispatch').classList.toggle('alert', done > 0);
+  setTagSub('dispatch', done ? `${done}件 帰還!` : going ? `${going}件 派遣中` : '', done > 0);
 }
 onShow('base', renderDispatchBadge);
-setInterval(() => { if (G.mode === 'base') renderDispatchBadge(); }, 15000);
+setInterval(() => {
+  if (G.mode !== 'base') return;
+  renderDispatchBadge();
+  // 拠点にいる間に商人の滞在時間が終わったら帰っていく
+  if (save.merchant.here && Date.now() >= save.merchant.until) { merchantTick(); refreshStation(); renderBase(); }
+}, 15000);
 
 // 応急修理(無料):出撃できる最低ラインまで戻す。ステータスダウンは残る
 $('btnQuickFix').addEventListener('click', () => {
