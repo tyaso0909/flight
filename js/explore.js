@@ -1,43 +1,39 @@
 // 着陸後の探索(星の地図から探索地点を選ぶ)
 // 手に入れた素材はいったん「積み荷」に入れ、帰還するときに積載量の範囲で持ち帰る
+// 探索のあとは「次の星へ」で残りの燃料のまま旅を続けられる(積み荷は1回の出撃で共通)
 import { $, rnd, stars } from './dom.js';
 import { KINDS, CREW, SPECIAL, TIER_WEIGHTS, TIER_QTY, MAX_TIER, BLUEPRINT, resKey, resTier, gearName } from './data.js';
 import { dropRow } from './resui.js';
-import { save, persist, partFx, hasGear, hasCrew, crewHere, cargoCap } from './save.js';
+import { save, persist, partFx, hasGear, hasCrew, crewHere, maxHull } from './save.js';
 import { G } from './state.js';
 import { showScreen } from './ui.js';
 import { scene, world, clearWorld, resetCamera } from './world.js';
 import { sfx } from './audio.js';
 import { terrainURL } from './terrain.js';
 import { record, checkAchievements } from './records.js';
+import { relaunch } from './flight.js';
 
-const CRASH_DAMAGE = 30;   // 不時着で減る耐久
 const DANGER_DAMAGE = 10;  // 危険地帯の落石で減る耐久
 const rarMult = (p) => [1, 1.6, 2.5][p.rar - 1];
 
 // 積み荷に入れる(設計図のかけらは積載量に数えない)
 function addLoot(key, n) {
-  G.ex.gained[key] = (G.ex.gained[key] || 0) + n;
+  G.trip.gained[key] = (G.trip.gained[key] || 0) + n;
 }
 const cargoUsed = (gained) => Object.entries(gained).reduce((s, [k, n]) => s + (k === BLUEPRINT.key ? 0 : n), 0);
 
 // 着陸演出のあとに呼ばれる
-export function beginExplore(p, crash, run) {
-  const hullBefore = save.hull;
+export function beginExplore(p, run) {
   save.best = Math.max(save.best || 0, Math.round(run.dist / 10));  // 派遣の「遠く」に使う
-  if (crash) save.hull = Math.max(0, save.hull - Math.round(CRASH_DAMAGE * partFx().crash));
   persist();
   // 着陸した星だけ残し、探索画面の背景に見せる
   world.planets.filter(q => q !== p).forEach(q => scene.remove(q.group));
   world.planets = [p];
   world.debris.forEach(d => scene.remove(d.mesh));
   world.debris = [];
-  const acts = crash ? 1 : 2;
-  G.ex = {
-    p, crash, hullBefore, ly: Math.round(run.dist / 10), fuel: Math.round(run.fuel), maxFuel: run.maxFuel,
-    actions: acts, maxActions: acts, nodes: makeNodes(p), gained: {}, crew: [], log: [], cap: cargoCap()
-  };
-  record.land(p, crash);
+  G.trip.stops.push({ name: `${p.type.name} ${p.name}`, rar: p.rar, ly: Math.round(run.dist / 10) });
+  G.ex = { p, ly: Math.round(run.dist / 10), actions: 2, maxActions: 2, nodes: makeNodes(p), log: [] };
+  record.land(p);
   G.mode = 'explore';
   renderExplore();
   showScreen('explore');
@@ -115,7 +111,7 @@ function explore(node) {
     if (left.length && Math.random() < 0.6) {
       const c = left[Math.floor(Math.random() * left.length)];
       save.crew.push({ key: c.key, planet: `${p.type.name} ${p.name}` });
-      ex.crew.push(c);
+      G.trip.crew.push(c);
       notes.push({ text: `${c.role}の${c.name}が仲間になった(お礼に素材をもらった)`, cls: 'good' });
       cls = 'crew';
     } else {
@@ -129,6 +125,7 @@ function explore(node) {
     } else if (rockfall) {
       const before = save.hull;
       save.hull = Math.max(0, save.hull - DANGER_DAMAGE);
+      record.damage();
       notes.push({ text: `落石で耐久 ${before} → ${save.hull}`, cls: 'bad' });
       cls = 'bad';
     }
@@ -139,6 +136,7 @@ function explore(node) {
   }
   ex.log.unshift({ label, drops: merge(drops), notes, cls });
   record.explore(node.kind, p.type.key);
+  G.trip.explores++;
   // 一番レアな素材の音。仲間が加わったときと落石のときは別の音
   const top = Math.max(1, ...drops.map(d => resTier(d.key)));
   if (cls === 'crew') sfx.crew(); else sfx.get(top);
@@ -160,10 +158,10 @@ const GLYPH = {
 };
 
 function renderCargo() {
-  const ex = G.ex, used = cargoUsed(ex.gained), over = used - ex.cap;
-  $('exCargoNum').textContent = `${used} / ${ex.cap}`;
+  const trip = G.trip, used = cargoUsed(trip.gained), over = used - trip.cap;
+  $('exCargoNum').textContent = `${used} / ${trip.cap}`;
   $('exCargoNum').classList.toggle('over', over > 0);
-  $('exCargoFill').style.width = Math.min(100, used / ex.cap * 100) + '%';
+  $('exCargoFill').style.width = Math.min(100, used / trip.cap * 100) + '%';
   $('exCargoBar').classList.toggle('over', over > 0);
   const warn = $('exCargoWarn');
   warn.hidden = over <= 0;
@@ -173,9 +171,9 @@ function renderCargo() {
 function renderExplore() {
   const ex = G.ex, p = ex.p, c = p.type.css, sp = SPECIAL[p.type.key];
   $('exTitle').textContent = `${p.type.name} ${p.name}`;
-  const tag = $('exTag');
-  tag.textContent = ex.crash ? '不時着' : '着陸成功';
-  tag.className = 'tag ' + (ex.crash ? 'bad' : 'ok');
+  const tag = $('exTag'), nth = G.trip.stops.length;
+  tag.textContent = nth > 1 ? `${nth}つ目の星` : '着陸成功';
+  tag.className = 'tag ok';
   const map = $('exMap');
   map.style.background = `radial-gradient(120% 100% at 30% 15%, ${c}33, transparent 60%), url(${terrainURL(p.type.key, p.name)}) center / cover no-repeat, #0a0e16`;
   map.innerHTML = ex.nodes.map(n => {
@@ -192,9 +190,10 @@ function renderExplore() {
   }).join('');
   $('exPips').innerHTML = Array.from({ length: ex.maxActions }, (_, i) => `<i class="pip${i < ex.actions ? ' on' : ''}"></i>`).join('');
   renderCargo();
-  $('exHint').textContent = ex.actions > 0
-    ? (ex.crash ? '不時着したため、探索できるのは1回だけです。' : '調べる地点をタップしてください。')
-    : '探索を終えました。';
+  const run = G.run, fuel = Math.round(run.fuel), canGo = fuel > 0 && save.hull > 0;
+  $('exHint').textContent = ex.actions > 0 ? '調べる地点をタップしてください。'
+    : !canGo ? '耐久が0のため、これ以上は飛べません。拠点へ帰還してください。'
+    : '探索を終えました。次の星へ向かうか、拠点へ帰還します。';
   // ログ(新しいものが上)。素材は1行ずつ「色 / 名前 / ★ / +数」で並べる
   $('exLog').innerHTML = ex.log.length
     ? ex.log.map((l, i) => `<li class="${l.cls}${i === 0 ? ' latest' : ''}">
@@ -203,7 +202,12 @@ function renderExplore() {
         ${l.notes.map(nt => `<p class="lg-note ${nt.cls}">${nt.text}</p>`).join('')}
       </li>`).join('')
     : '<li class="empty">鉱脈は素材が多く、遺跡では設計図のかけら、集落では仲間に出会えることがあります。危険地帯はレアな素材が出やすい代わりに機体が傷つくことがあります。★の付いた特殊エリアには、専用の装備がないと入れません。</li>';
-  $('btnExDone').textContent = ex.actions > 0 ? '切り上げて帰還' : '拠点へ帰還';
+  $('btnExDone').innerHTML = `拠点へ帰還<small>積み荷を持ち帰る</small>`;
+  const next = $('btnExNext');
+  next.disabled = !canGo;
+  next.innerHTML = `${ex.actions > 0 ? '切り上げて' : ''}次の星へ<small>燃料 ${fuel} / ${Math.round(run.maxFuel)}・耐久 ${save.hull} / ${maxHull()}</small>`;
+  $('btnExDone').classList.toggle('primary', !canGo);
+  next.classList.toggle('primary', canGo);
 }
 $('exMap').addEventListener('click', (e) => {
   const b = e.target.closest('.ex-node');
@@ -225,33 +229,40 @@ function packCargo(gained, cap) {
   return { kept, left };
 }
 
-function showExploreResult() {
-  const ex = G.ex, p = ex.p;
-  const { kept, left } = packCargo(ex.gained, ex.cap);
+// 出撃を終えて拠点へ(reason:home = 自分で帰還、fuel = 燃料切れ、hull = 機体の損傷、abort = 飛行中に帰還)
+const REASON = {
+  home: ['帰還', 'ok'], abort: ['途中で帰還', 'ok'], fuel: ['燃料切れで帰還', 'warn'], hull: ['機体損傷で帰還', 'bad']
+};
+export function finishTrip(reason) {
+  const trip = G.trip, run = G.run;
+  const { kept, left } = packCargo(trip.gained, trip.cap);
   Object.entries(kept).forEach(([k, n]) => { save.res[k] = (save.res[k] || 0) + n; });
-  record.loot(kept, cargoUsed(kept) >= ex.cap);
+  save.best = Math.max(save.best || 0, Math.round(run.dist / 10));
+  record.loot(kept, cargoUsed(kept) >= trip.cap);
+  record.trip(trip.stops.length, reason);
   persist();
 
-  $('resTitle').textContent = `${p.type.name} ${p.name}`;
+  const n = trip.stops.length;
+  $('resTitle').textContent = n === 0 ? '星に寄らずに帰還' : n === 1 ? trip.stops[0].name : `${n}つの星を探査`;
   const tag = $('resTag');
-  tag.textContent = ex.crash ? '不時着' : '着陸成功';
-  tag.className = 'tag ' + (ex.crash ? 'bad' : 'ok');
+  tag.textContent = REASON[reason][0];
+  tag.className = 'tag ' + REASON[reason][1];
   const list = (obj, sign) => {
     const ks = Object.keys(obj).sort((a, b) => resTier(b) - resTier(a));
     return ks.length ? `<ul class="drops">${ks.map(k => dropRow(k, `${sign}${obj[k]}`)).join('')}</ul>` : 'なし';
   };
   const keptN = cargoUsed(kept), leftN = cargoUsed(left);
   const rows = [
-    ['到達距離', `${ex.ly.toLocaleString('ja-JP')} 光年`],
-    ['星のレア度', `<span class="stars">${stars(p.rar)}</span>`],
-    ['探索', `${ex.maxActions - ex.actions} / ${ex.maxActions} 回${ex.crash ? '(不時着で1回に減少)' : ''}`],
-    ['仲間', ex.crew.length ? ex.crew.map(c => `${c.role} ${c.name}`).join('、') : 'なし'],
-    ['残り燃料', `${ex.fuel} / ${ex.maxFuel}`],
-    ['耐久', ex.hullBefore === save.hull ? `${save.hull}(損傷なし)` : `${ex.hullBefore} → ${save.hull}`]
+    ['到達距離', `${Math.round(run.dist / 10).toLocaleString('ja-JP')} 光年`],
+    ['寄った星', n ? `<ol class="stops">${trip.stops.map(st => `<li>${st.name} <span class="stars">${stars(st.rar)}</span></li>`).join('')}</ol>` : 'なし'],
+    ['探索', `${trip.explores} か所`],
+    ['仲間', trip.crew.length ? trip.crew.map(c => `${c.role} ${c.name}`).join('、') : 'なし'],
+    ['残り燃料', `${Math.round(run.fuel)} / ${Math.round(run.maxFuel)}`],
+    ['耐久', trip.hullStart === save.hull ? `${save.hull}(損傷なし)` : `${trip.hullStart} → ${save.hull}`]
   ];
   $('resKv').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
   // 右側:持ち帰った素材と、積載オーバーで置いてきた素材
-  $('resLoot').innerHTML = `<h2>持ち帰った素材<span class="loot-n">${keptN} / ${ex.cap}</span></h2>${list(kept, '+')}`
+  $('resLoot').innerHTML = `<h2>持ち帰った素材<span class="loot-n">${keptN} / ${trip.cap}</span></h2>${list(kept, '+')}`
     + (leftN ? `<h2 class="left">置いてきた素材<span class="loot-n">積載オーバー ${leftN}</span></h2><div class="left-list">${list(left, '−')}</div>` : '');
   clearWorld();
   G.ex = null;
@@ -260,5 +271,6 @@ function showExploreResult() {
   showScreen('result');
   checkAchievements();
 }
-$('btnExDone').addEventListener('click', () => { if (G.ex) showExploreResult(); });
+$('btnExDone').addEventListener('click', () => { if (G.ex) finishTrip('home'); });
+$('btnExNext').addEventListener('click', () => { if (G.ex && G.run.fuel > 0 && save.hull > 0) relaunch(); });
 $('btnHome').addEventListener('click', () => { G.mode = 'base'; showScreen('base'); });

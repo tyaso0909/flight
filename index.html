@@ -64,7 +64,7 @@
     <div class="topbar">
       <button id="btnRecal" class="chip-btn" type="button">傾きリセット</button>
       <div id="chips"></div>
-      <button id="btnAbort" class="chip-btn" type="button">中断して拠点へ</button>
+      <button id="btnAbort" class="chip-btn" type="button">拠点へ帰還</button>
     </div>
     <div id="warn" hidden></div>
 
@@ -77,6 +77,7 @@
 
   <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
   <div id="boostFx"></div>
+  <div id="stormFx"></div>
   <div id="hitFx"></div>
   <div id="flash"></div>
 
@@ -130,7 +131,7 @@
           <ul id="crewList" class="crew-grid"></ul>
           <details class="howto">
             <summary>遊び方と操作</summary>
-            <p class="note"><b>遊び方</b> 傾けて操縦し、ブーストで速度を保ちます。押さないと減速し、速度計の赤い線を下回ると近くの星に引き寄せられます。降りたい星の近くではブーストをやめ、通り過ぎたい星はブーストで振り切ります。燃料が切れると不時着して機体が傷つき、着陸後に探索できる回数も減ります。</p>
+            <p class="note"><b>遊び方</b> 傾けて操縦し、ブーストで速度を保ちます。押さないと減速し、速度計の赤い線を下回ると近くの星に引き寄せられます。降りたい星の近くではブーストをやめ、通り過ぎたい星はブーストで振り切ります。探索のあとは「次の星へ」で旅を続けられます。燃料が切れると帰還用の燃料で拠点へ戻り、集めた素材はそのまま持ち帰れます。遠くの宙域ほど、大きなデブリや磁気嵐が増えます。</p>
             <p class="note"><b>拠点</b> 窓の外の船をタップすると格納庫、星図のテーブルは派遣、作業台は工房です。仲間をタップすると話しかけられます。商人が来ているときは、商人をタップすると買い物ができます。</p>
             <p class="note" id="ctrlNote"></p>
           </details>
@@ -280,7 +281,8 @@
     </div>
     <footer class="pn-foot">
       <p id="exHint" class="foot-hint"></p>
-      <button id="btnExDone" class="btn primary big" type="button">拠点へ帰還</button>
+      <button id="btnExDone" class="btn" type="button">拠点へ帰還</button>
+      <button id="btnExNext" class="btn primary big" type="button">次の星へ</button>
     </footer>
   </section>
 

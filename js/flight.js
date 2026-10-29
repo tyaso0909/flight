@@ -1,7 +1,7 @@
 // 飛行パート(操縦・ブースト・引力・デブリ・着陸演出・計器盤)
-import { $, clamp, stars } from './dom.js';
-import { V_MIN, V_START, V_MAX } from './data.js';
-import { cfg, save, shipStats, hullEffects, maxHull, partFx } from './save.js';
+import { $, clamp, rnd, stars } from './dom.js';
+import { V_MIN, V_START, V_MAX, zoneAt, DEBRIS_DMG } from './data.js';
+import { cfg, save, persist, shipStats, hullEffects, maxHull, partFx, cargoCap } from './save.js';
 import { G } from './state.js';
 import { showScreen } from './ui.js';
 import { view, layout, tryLandscape } from './orientation.js';
@@ -9,20 +9,82 @@ import { scene, camera, updateStreaks, world, clearWorld, spawnPlanet, spawnDebr
 import { sfx, engine } from './audio.js';
 import { record } from './records.js';
 import { tilt, calibrate, askTilt, readInput, boostHeld, boostButton } from './input.js';
-import { beginExplore } from './explore.js';
+import { beginExplore, finishTrip } from './explore.js';
 
 const REDUCE = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 const tmpV = new THREE.Vector3();
 const lookCam = new THREE.PerspectiveCamera(); // カメラは -Z を向くので、向きの計算もカメラで行う
 const startQ = new THREE.Quaternion();
 
+// 星を離れるたび(出撃・探索のあとの再出発)に戻す値
+function freshLeg(run) {
+  Object.assign(run, {
+    v: V_START, px: 0, py: 0, vx: 0, vy: 0, pull: 0, active: null, debrisT: 1.2, shake: 0, hitFx: 0, boostFx: 0,
+    returning: null, belt: 0, beltWarn: 0, storm: 0, msg: null
+  });
+}
 export function resetRun() {
   clearWorld();
   const st = shipStats();
+  for (const k in G.run) delete G.run[k];
   Object.assign(G.run, {
-    st, fx: partFx(), v: V_START, fuel: st.fuel, maxFuel: st.fuel, dist: 0, px: 0, py: 0, vx: 0, vy: 0, pull: 0, active: null,
-    nextPlanet: 500, debrisT: 1.2, shake: 0, hitFx: 0, boostFx: 0
+    st, fx: partFx(), fuel: st.fuel, maxFuel: st.fuel, dist: 0, nextPlanet: 500,
+    zone: null, nextBelt: 2000, nextStorm: 1500, stormPh: 0
   });
+  freshLeg(G.run);
+  // 1回の出撃(何個の星に寄っても)で集めた積み荷
+  G.trip = { gained: {}, stops: [], crew: [], hullStart: save.hull, cap: cargoCap(), explores: 0 };
+}
+
+// 探索のあと、残りの燃料でそのまま次の星へ
+export function relaunch() {
+  const run = G.run;
+  clearWorld();
+  resetCamera();
+  freshLeg(run);
+  run.nextPlanet = run.dist + 900;
+  run.nextBelt = Math.max(run.nextBelt, run.dist + 1500);
+  run.nextStorm = Math.max(run.nextStorm, run.dist + 1200);
+  G.ex = null;
+  G.mode = 'flying';
+  showScreen('flying');
+  sfx.launch();
+  engine.start();
+  const f = $('flash');
+  f.style.background = 'radial-gradient(circle at 50% 55%, #ffffff, #8fd3ff 60%, #04060c)';
+  f.style.opacity = 1;
+  fadeFlash();
+}
+
+// 拠点へ帰る(燃料切れ・機体の損傷・自分で帰る)。集めた素材はそのまま持ち帰る
+const RETURN_MSG = { fuel: '燃料切れ:帰還用の燃料で拠点へ戻ります', hull: '機体損傷:緊急帰還します', abort: '拠点へ帰還します' };
+export function startReturn(reason) {
+  const run = G.run;
+  if (G.mode !== 'flying' || run.returning) return;
+  run.returning = { t: 0, reason };
+  boostButton.classList.remove('on');
+  sfx.launch();
+}
+function updateReturn(dt) {
+  const run = G.run, r = run.returning;
+  r.t += dt;
+  run.v = Math.min(V_MAX * 2.2, run.v + 260 * dt);
+  engine.update(Math.min(V_MAX, run.v), true);
+  updateStreaks(run.v * dt * 2, run.v * 1.4);
+  setFov(70 + 22 * Math.min(1, r.t / 1.8));
+  run.boostFx = Math.min(1, run.boostFx + dt * 2);
+  $('boostFx').style.opacity = (run.boostFx * 0.9).toFixed(2);
+  const f = $('flash');
+  if (r.t < 0.1) f.style.background = 'radial-gradient(circle at 50% 50%, #ffffff, #cfe9ff 55%, #8fd3ff)';
+  f.style.opacity = clamp((r.t - 1.3) / 0.6, 0, 1);
+  if (r.t >= 2.0) {
+    engine.stop();
+    setFov(70);
+    $('boostFx').style.opacity = 0;
+    $('stormFx').style.opacity = 0;
+    finishTrip(r.reason);
+    fadeFlash();
+  }
 }
 
 // 出撃
@@ -43,19 +105,43 @@ export async function launch() {
   }, 250);
 }
 
-export function abort() {
-  engine.stop();
-  setFov(70);
-  clearWorld();
-  G.mode = 'base';
-  resetCamera();
-  showScreen('base');
-}
-$('btnAbort').addEventListener('click', abort);
+$('btnAbort').addEventListener('click', () => startReturn('abort'));
 $('btnRecal').addEventListener('click', calibrate);
+
+// ---------- 遠くの宙域の危険(デブリ帯・磁気嵐) ----------
+function say(text, t = 3) { G.run.msg = { text, t }; }
+function updateHazards(dt, zone) {
+  const run = G.run;
+  // 新しい宙域に入ったとき
+  if (zone !== run.zone) {
+    if (run.zone && zone.ly > run.zone.ly) { say(`${zone.name}に入りました:${zone.note}`, 3.5); sfx.warn(); }
+    run.zone = zone;
+  }
+  // デブリ帯:予告のあと、しばらくデブリが大量に流れてくる
+  if (zone.belt) {
+    if (run.beltWarn > 0) { run.beltWarn -= dt; if (run.beltWarn <= 0) run.belt = 6 + Math.random() * 3; }
+    else if (run.belt > 0) run.belt -= dt;
+    else if (run.dist >= run.nextBelt) { run.beltWarn = 2.5; run.nextBelt = run.dist + rnd(2600, 4600); sfx.warn(); }
+  }
+  // 磁気嵐:船が横に流され、画面が紫に揺らぐ
+  if (zone.storm) {
+    if (run.storm > 0) {
+      run.storm -= dt; run.stormPh += dt;
+      const k = Math.min(1, run.storm / 1.2, (8 - run.storm) / 1.2);
+      run.px += Math.sin(run.stormPh * 0.9) * 48 * k * dt;
+      run.py += Math.cos(run.stormPh * 0.65) * 26 * k * dt;
+    } else if (run.dist >= run.nextStorm) { run.storm = 8; run.stormPh = Math.random() * 6; run.nextStorm = run.dist + rnd(4200, 7500); sfx.warn(); }
+  }
+  const sf = run.storm > 0 ? Math.min(1, run.storm / 1.2, (8 - run.storm) / 1.2) : 0;
+  $('stormFx').style.opacity = (sf * (0.65 + Math.random() * 0.35)).toFixed(2);
+  if (run.msg) { run.msg.t -= dt; if (run.msg.t <= 0) run.msg = null; }
+}
 
 export function updateFlying(dt) {
   const run = G.run;
+  if (run.returning) { updateReturn(dt); return; }
+  const zone = zoneAt(run.dist / 10);
+  updateHazards(dt, zone);
   const [ix, iy] = readInput();
   const fx = hullEffects();
   const steer = 85 * fx.steer * run.st.steer;
@@ -67,6 +153,7 @@ export function updateFlying(dt) {
   if (boosting) {
     run.v += run.st.accel * dt;
     run.fuel = Math.max(0, run.fuel - run.st.burn * fx.burn * dt);
+    if (run.fuel <= 0) { startReturn('fuel'); return; }
   } else {
     run.v -= cfg.drag * run.fx.drag * dt;
   }
@@ -83,8 +170,12 @@ export function updateFlying(dt) {
   if (run.dist >= run.nextPlanet) { spawnPlanet(run.dist); run.nextPlanet += cfg.spacing * (0.8 + Math.random() * 0.4); }
   run.debrisT -= dt;
   if (cfg.debris > 0 && run.debrisT <= 0) {
-    spawnDebris(run);
-    run.debrisT = (1.15 - Math.min(0.55, run.dist / 10 / 4000)) / cfg.debris * (0.6 + Math.random() * 0.8);
+    // 遠くの宙域ほど多く、大型・巨大デブリも混ざる。デブリ帯の中はさらに多い
+    const r = Math.random();
+    const kind = r < zone.huge ? 'huge' : r < zone.huge + zone.large ? 'large' : 'normal';
+    const belt = run.belt > 0;
+    spawnDebris(run, kind, belt);
+    run.debrisT = 1.15 / (cfg.debris * zone.rate * (belt ? 3.2 : 1)) * (0.6 + Math.random() * 0.8);
   }
 
   const planets = world.planets, debris = world.debris;
@@ -103,11 +194,21 @@ export function updateFlying(dt) {
     d.mesh.rotation.x += d.rx * dt; d.mesh.rotation.y += d.ry * dt;
     // デブリに当たると減速する
     if (prev < 0 && d.z >= 0 && Math.hypot(d.x - run.px, d.y - run.py) < d.r + 4) {
-      run.v = Math.max(V_MIN, run.v * run.fx.hitKeep);
-      run.shake = 0.4; run.hitFx = 1;
+      const heavy = d.kind !== 'normal';
+      run.v = Math.max(V_MIN, run.v * run.fx.hitKeep * (heavy ? 0.85 : 1));
+      run.shake = heavy ? 0.7 : 0.4; run.hitFx = 1;
       sfx.hit();
       spawnSparks(d.x, d.y, -10);
       scene.remove(d.mesh); debris.splice(i, 1);
+      // 大型・巨大デブリは耐久も削る
+      if (heavy) {
+        const dmg = Math.max(1, Math.round(DEBRIS_DMG[d.kind] * run.fx.bigHit));
+        save.hull = Math.max(0, save.hull - dmg);
+        record.damage();
+        persist();
+        say(`${d.kind === 'huge' ? '巨大' : '大型'}デブリに衝突:耐久 −${dmg}`, 1.8);
+        if (save.hull <= 0) { startReturn('hull'); return; }
+      }
       continue;
     }
     if (d.z > 60) { scene.remove(d.mesh); debris.splice(i, 1); }
@@ -138,21 +239,21 @@ export function updateFlying(dt) {
   run.hitFx = Math.max(0, run.hitFx - dt * 2.5);
   const sh = REDUCE.matches ? 0 : run.shake * 6;
   camera.position.set(run.px + (Math.random() - 0.5) * sh, run.py + (Math.random() - 0.5) * sh, 0);
-  camera.rotation.set(run.vy * 0.0016, -run.vx * 0.0016, -run.vx * 0.0045);
+  const wob = run.storm > 0 && !REDUCE.matches ? Math.sin(run.stormPh * 3.1) * 0.03 : 0;
+  camera.rotation.set(run.vy * 0.0016, -run.vx * 0.0016, -run.vx * 0.0045 + wob);
   updateStreaks(dz, run.v);
 }
 
 // ---------- 着陸演出 ----------
 function startLanding(p) {
   G.mode = 'landing';
-  G.land = { p, t: 0, crash: G.run.fuel <= 0, from: p.group.position.clone() };
+  G.land = { p, t: 0, from: p.group.position.clone() };
   engine.stop();
-  sfx.land(G.land.crash);
+  sfx.land(false);
   $('boostFx').style.opacity = 0;
-  // 大気圏突入:星の色に光る。不時着は赤く光る
-  $('flash').style.background = G.land.crash
-    ? 'radial-gradient(circle at 50% 55%, #ffe2c8, #ff5b3a 55%, #5a0d02)'
-    : `radial-gradient(circle at 50% 55%, #ffffff, ${p.type.css} 60%, #04060c)`;
+  $('stormFx').style.opacity = 0;
+  // 大気圏突入:星の色に光る
+  $('flash').style.background = `radial-gradient(circle at 50% 55%, #ffffff, ${p.type.css} 60%, #04060c)`;
   startQ.copy(camera.quaternion);
   boostButton.classList.remove('on');
   $('warn').hidden = true;
@@ -171,17 +272,11 @@ export function updateLanding(dt) {
   run.v = Math.max(0, run.v - 120 * dt);
   updateStreaks(run.v * dt, run.v);
   setFov(70 + 9 * Math.max(0, run.boostFx *= 0.95) + 14 * k);  // 近づくほど吸い込まれるように広がる
-  if (land.crash && land.t > 1.5 && !REDUCE.matches) {
-    const sh = (land.t - 1.5) * 10;
-    camera.position.x = run.px + (Math.random() - 0.5) * sh;
-    camera.position.y = run.py + (Math.random() - 0.5) * sh;
-  }
   $('flash').style.opacity = clamp((land.t - 1.7) / 0.6, 0, 1);
   if (land.t >= 2.4) {
-    const { crash } = land;
     G.land = null;
     setFov(70);
-    beginExplore(p, crash, run);
+    beginExplore(p, run);
     fadeFlash();
   }
 }
@@ -197,6 +292,7 @@ function fadeFlash() {
 }
 
 // ---------- 計器盤 ----------
+const tripCargo = () => Object.entries(G.trip.gained).reduce((a, [k, n]) => a + (k === 'blueprint' ? 0 : n), 0);
 const ticksG = $('ticks');
 for (let v = 0; v <= V_MAX; v += 50) {
   const r = -120 + 240 * v / V_MAX;
@@ -242,8 +338,13 @@ export function updateHud() {
   const w = $('warn');
   let msg = '', calm = false;
   if (G.mode === 'flying') {
-    if (run.fuel <= 0) { msg = '燃料切れ:最寄りの星に不時着します'; }
+    if (run.returning) { msg = RETURN_MSG[run.returning.reason]; calm = run.returning.reason === 'abort'; }
+    else if (run.beltWarn > 0) { msg = '前方にデブリ帯'; }
+    else if (run.msg && /衝突/.test(run.msg.text)) { msg = run.msg.text; }
     else if (run.pull > 0) { msg = '引力圏:ブーストで離脱'; }
+    else if (run.storm > 0) { msg = '磁気嵐:船が流されます'; }
+    else if (run.belt > 0) { msg = 'デブリ帯を通過中'; calm = true; }
+    else if (run.msg) { msg = run.msg.text; calm = true; }
     else if (run.active && run.v < capOf(run.active) + 25) { msg = '星の引力が近い'; calm = true; }
   }
   if (msg) { setText('warn', msg); w.classList.toggle('calm', calm); w.hidden = false; } else w.hidden = true;
@@ -272,6 +373,11 @@ export function updateHud() {
   const fx = hullEffects(), chips = [];
   if (fx.low70) chips.push('旋回性ダウン');
   if (fx.low40) chips.push('燃費悪化');
-  const ch = chips.join('|');
-  if (memo.chips !== ch) { memo.chips = ch; $('chips').innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join(''); }
+  if (G.trip && G.trip.stops.length) chips.push(`積み荷 ${tripCargo()} / ${G.trip.cap}`);
+  const zone = run.zone ? run.zone.name : '';
+  const ch = zone + chips.join('|');
+  if (memo.chips !== ch) {
+    memo.chips = ch;
+    $('chips').innerHTML = (zone ? `<span class="chip zone">${zone}</span>` : '') + chips.map(c => `<span class="chip${c.startsWith('積み荷') ? ' zone' : ''}">${c}</span>`).join('');
+  }
 }

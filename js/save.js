@@ -13,7 +13,7 @@ export const ZERO_LV = Object.freeze(zeroLv());
 const newShip = (kind, id) => ({ id, kind, lv: zeroLv(), parts: [], hull: SHIPS[kind].base.hull });
 // プレイの記録(実績に使う)
 const newStats = () => ({
-  flights: 0, landings: 0, crashes: 0, streak: 0, bestStreak: 0, explores: 0, dispatches: 0, fullLoads: 0, rare3: 0,
+  flights: 0, landings: 0, crashes: 0, streak: 0, bestStreak: 0, explores: 0, dispatches: 0, fullLoads: 0, rare3: 0, forced: 0, bestChain: 0,
   typesLanded: {}, specials: {}, tier5: {}
 });
 
@@ -78,7 +78,7 @@ export function partFx(parts = save.ship.parts) {
   return {
     drag: has('damper') ? 0.75 : 1,       // ブーストしていないときの減速
     hitKeep: has('absorber') ? 0.89 : 0.78, // デブリに当たったあとに残る速度の割合
-    crash: has('gear') ? 0.5 : 1,         // 不時着のダメージ
+    bigHit: has('gear') ? 0.5 : 1,        // 大型デブリのダメージ
     dangerSafe: has('heatshield')         // 危険地帯で傷つかない
   };
 }

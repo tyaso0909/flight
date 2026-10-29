@@ -603,3 +603,15 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .shop-n { font-family: var(--font-inst); color: var(--amber); margin-left: 0.2em; white-space: nowrap; }
 .shop-left { font-size: 0.8em; color: var(--muted); white-space: nowrap; }
 .shop-row .btn { min-width: 4.6em; }
+
+/* ===== 遠くの宙域(磁気嵐・宙域の表示)と連続探査 ===== */
+#stormFx {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(176, 96, 255, 0.28) 75%, rgba(120, 40, 200, 0.5)),
+    repeating-linear-gradient(0deg, rgba(200, 160, 255, 0.05) 0 2px, transparent 2px 5px);
+}
+.chip.zone { border-color: rgba(143, 211, 255, 0.55); color: var(--ice); background: rgba(6, 20, 32, 0.6); }
+.tag.warn { color: var(--amber); }
+.kv dd .stops { margin: 0; padding-left: 1.3em; font-family: var(--font-ui); line-height: 1.55; }
+.kv dd .stops .stars { color: var(--amber); font-size: 0.85em; }
+#scrExplore .pn-foot .btn small { font-family: var(--font-inst); }

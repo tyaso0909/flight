@@ -92,7 +92,7 @@ export const sfx = {
     tone(880, 0.09, { type: 'square', vol: 0.05 });
   },
   launch() { if (!ready()) return; hiss(1.1, { freq: 300, toFreq: 2400, q: 0.8, vol: 0.25 }); tone(80, 1.0, { type: 'sawtooth', vol: 0.06, slide: 2.5, attack: 0.2 }); },
-  // 大気圏突入の風切り音。不時着は最後にどすんと鳴る
+  // 大気圏突入の風切り音(crash は今は使っていない:最後にどすんと鳴る)
   land(crash) {
     if (!ready()) return;
     hiss(2.2, { freq: 2600, toFreq: 250, q: 0.6, vol: 0.3 });

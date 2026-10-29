@@ -167,6 +167,21 @@ const ROCK = new THREE.IcosahedronGeometry(1, 0);
 const SLAB = new THREE.BoxGeometry(1.6, 0.4, 1);
 const rockMat = new THREE.MeshStandardMaterial({ color: 0x8a8178, roughness: 1, flatShading: true });
 const slabMat = new THREE.MeshStandardMaterial({ color: 0x6f7a86, roughness: 0.6, metalness: 0.5, flatShading: true });
+// 大型デブリ:でこぼこの岩に、赤く光る割れ目
+const LUMPY = (() => {
+  const g = new THREE.IcosahedronGeometry(1, 1), pos = g.attributes.position, v = new THREE.Vector3();
+  const seen = new Map();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const key = `${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`;
+    if (!seen.has(key)) seen.set(key, 0.78 + Math.random() * 0.4);
+    v.multiplyScalar(seen.get(key));
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  return g;
+})();
+const hotMat = new THREE.MeshStandardMaterial({ color: 0x4a3b36, roughness: 0.95, flatShading: true, emissive: 0x7a1e06, emissiveIntensity: 0.9 });
 
 // ---------- 星とデブリ ----------
 export const world = { planets: [], debris: [] };
@@ -222,19 +237,29 @@ export function spawnPlanet(dist) {
 // その星に引き寄せられる速度(大きい星ほど高い)
 export const capOf = (p) => cfg.capture * (0.8 + (p.r - 45) / 50 * 0.4);
 
-export function spawnDebris(run) {
+// kind:normal = ふつう(当たると減速)、large / huge = 大型・巨大(赤く光る。当たると耐久も減る)
+// belt = デブリ帯の中(横に広く、たくさん出る)
+export function spawnDebris(run, kind = 'normal', belt = false) {
   const ly = run.dist / 10;
-  const big = Math.random() < 0.25 + Math.min(0.3, ly / 6000);
-  const r = big ? 8 + Math.random() * 7 : 3 + Math.random() * 4;
-  const slab = Math.random() < 0.3;
-  const mesh = new THREE.Mesh(slab ? SLAB : ROCK, slab ? slabMat : rockMat);
+  let r, mesh;
+  if (kind === 'normal') {
+    const big = Math.random() < 0.25 + Math.min(0.3, ly / 6000);
+    r = big ? 8 + Math.random() * 7 : 3 + Math.random() * 4;
+    const slab = Math.random() < 0.3;
+    mesh = new THREE.Mesh(slab ? SLAB : ROCK, slab ? slabMat : rockMat);
+  } else {
+    r = kind === 'huge' ? 26 + Math.random() * 10 : 15 + Math.random() * 6;
+    mesh = new THREE.Mesh(LUMPY, hotMat);
+  }
   mesh.scale.setScalar(r);
   const moving = ly > 1200 && Math.random() < 0.4;
+  const spread = belt ? 1.7 : 1;
+  const slow = kind === 'normal' ? 1 : 0.35;
   const d = {
-    mesh, r, z: -1500,
-    x: run.px + (Math.random() - 0.5) * 100, y: run.py + (Math.random() - 0.5) * 75,
+    mesh, r, kind, z: -1500,
+    x: run.px + (Math.random() - 0.5) * 100 * spread, y: run.py + (Math.random() - 0.5) * 75 * spread,
     dx: moving ? (Math.random() - 0.5) * 40 : 0, dy: moving ? (Math.random() - 0.5) * 30 : 0,
-    rx: (Math.random() - 0.5) * 2, ry: (Math.random() - 0.5) * 2
+    rx: (Math.random() - 0.5) * 2 * slow, ry: (Math.random() - 0.5) * 2 * slow
   };
   mesh.position.set(d.x, d.y, d.z);
   scene.add(mesh);

@@ -30,7 +30,9 @@ export const ACHIEVEMENTS = [
   { key: 'parts', name: 'パーツ職人', desc: 'パーツを全部作る', max: PARTS.length, get: () => save.parts.length, reward: 3 },
   { key: 'gear', name: '全装備', desc: '探索装備を全部作る', max: GEAR.length, get: () => save.gear.length, reward: 3 },
   { key: 'dispatch', name: '頼もしい仲間', desc: '派遣を10回成功させる', max: 10, get: () => st().dispatches, reward: 2 },
-  { key: 'safe', name: '無事故', desc: '不時着せずに10回続けて着陸する', max: 10, get: () => st().bestStreak, reward: 2 },
+  { key: 'safe', name: '無傷の航海', desc: '機体を傷つけずに10回続けて着陸する', max: 10, get: () => st().bestStreak, reward: 2 },
+  { key: 'chain3', name: '星めぐり', desc: '1回の出撃で3つの星に着陸する', max: 3, get: () => st().bestChain, reward: 2 },
+  { key: 'chain6', name: '長い旅路', desc: '1回の出撃で6つの星に着陸する', max: 6, get: () => st().bestChain, reward: 3 },
   { key: 'full', name: '満載', desc: '積載量いっぱいまで持ち帰る', max: 1, get: () => st().fullLoads, reward: 1 }
 ];
 
@@ -72,11 +74,18 @@ export function checkAchievements() {
 // ---------- 記録を数える(他の画面から呼ぶ) ----------
 export const record = {
   launch() { st().flights++; },
-  land(p, crash) {
+  land(p) {
     st().landings++;
     st().typesLanded[p.type.key] = true;
     if (p.rar === 3) st().rare3 = 1;
-    if (crash) { st().crashes++; st().streak = 0; } else { st().streak++; st().bestStreak = Math.max(st().bestStreak, st().streak); }
+    st().streak++; st().bestStreak = Math.max(st().bestStreak, st().streak);
+  },
+  // 機体が傷ついたら、無傷の連続着陸が途切れる
+  damage() { st().streak = 0; },
+  // 出撃から帰ってきたとき(寄った星の数、帰還の理由)
+  trip(stops, reason) {
+    st().bestChain = Math.max(st().bestChain, stops);
+    if (reason === 'fuel') st().forced++;
   },
   explore(kind, typeKey) {
     st().explores++;
@@ -98,8 +107,10 @@ function render() {
   const rows = [
     ['最高到達距離', `${(save.best || 0).toLocaleString('ja-JP')} 光年`],
     ['出撃', `${s.flights} 回`],
-    ['着陸', `${s.landings} 回(不時着 ${s.crashes} 回)`],
-    ['無事故の連続着陸', `最高 ${s.bestStreak} 回`],
+    ['着陸', `${s.landings} 回`],
+    ['1回の出撃で寄った星', `最多 ${s.bestChain} 個`],
+    ['燃料切れで帰還', `${s.forced} 回`],
+    ['無傷の連続着陸', `最高 ${s.bestStreak} 回`],
     ['探索した地点', `${s.explores} か所`],
     ['派遣', `${s.dispatches} 回`],
     ['着陸した星', TYPES.map(t => `<span class="${s.typesLanded[t.key] ? 'on' : 'off'}">${t.name}</span>`).join(' ')],

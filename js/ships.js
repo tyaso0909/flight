@@ -1,7 +1,7 @@
 // 船の3Dモデル(3種類)と、格納庫で船を表示するビューア
 // モデルは強化の段階で見た目が変わる:燃料タンク=外付けタンク、エンジン=ノズルの大きさと光、
 // 燃費=吸気口、姿勢制御=小型スラスター、装甲=装甲板
-// 付けたパーツも一部は見た目に出る:予備燃料タンク、アフターバーナー、補強フレーム、着陸ギア、耐熱シールド
+// 付けたパーツも一部は見た目に出る:予備燃料タンク、アフターバーナー、補強フレーム、偏向フィールド、耐熱シールド
 import { clamp } from './dom.js';
 import { toLocalDelta } from './orientation.js';
 
@@ -16,6 +16,7 @@ const M = {
   plate: new THREE.MeshStandardMaterial({ color: 0x5b6573, roughness: 0.7, metalness: 0.4, flatShading: true }),
   heat: new THREE.MeshStandardMaterial({ color: 0x6b2a1c, roughness: 0.85, metalness: 0.2, emissive: 0x2a0a04, flatShading: true }),
   burner: new THREE.MeshBasicMaterial({ color: 0xff7a3a }),
+  field: new THREE.MeshBasicMaterial({ color: 0x62e0ff }),
   crate: new THREE.MeshStandardMaterial({ color: 0x9a7b4f, roughness: 0.8, metalness: 0.15, flatShading: true })
 };
 const thinMat = M.hull.clone();
@@ -111,9 +112,10 @@ function applyParts(g, slots, parts) {
   if (has('subtank')) slots.extraTank.forEach(t => addTank(g, t, 0));
   if (has('afterburner')) slots.engines.forEach(e => part(g, new THREE.TorusGeometry(e.r * 1.2, 0.04, 6, 24), M.burner, [e.x, e.y, e.z + 0.3]));
   if (has('frame')) slots.rails.forEach(a => part(g, box(a.w, a.h, a.d), M.dark, [a.x, a.y, a.z]));
+  // 偏向フィールド:船の下に小さな発生装置(光る球)
   if (has('gear')) slots.legs.forEach(a => {
-    part(g, box(0.06, 0.3, 0.06), M.dark, [a.x, a.y, a.z]);
-    part(g, box(0.2, 0.03, 0.2), M.dark, [a.x, a.y - 0.16, a.z]);
+    part(g, box(0.06, 0.22, 0.06), M.dark, [a.x, a.y + 0.02, a.z]);
+    part(g, new THREE.SphereGeometry(0.09, 10, 8), M.field, [a.x, a.y - 0.12, a.z]);
   });
   if (has('container')) slots.bigCargo.forEach(a => addCrate(g, a));
   if (has('heatshield')) {

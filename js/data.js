@@ -52,6 +52,19 @@ export const TIER_WEIGHTS = {
 // レア度ごとの、一度に手に入る量の倍率
 export const TIER_QTY = [0, 1, 0.7, 0.5, 0.35, 0.25];
 
+// 遠くへ行くほど危険になる宙域(ly = この距離(光年)から)。燃料の効率は変えず、障害物とギミックで難しくする
+// rate = デブリの出る量の倍率、large / huge = 大型・巨大デブリの割合、belt = デブリ帯、storm = 磁気嵐
+export const ZONES = [
+  { ly: 0, name: '安定宙域', note: '', rate: 1, large: 0, huge: 0, belt: false, storm: false },
+  { ly: 1000, name: 'デブリ宙域', note: 'デブリが増え、デブリ帯が現れる', rate: 1.3, large: 0.07, huge: 0, belt: true, storm: false },
+  { ly: 2000, name: '残がいの海', note: '耐久を削る大型デブリが増える', rate: 1.55, large: 0.15, huge: 0, belt: true, storm: false },
+  { ly: 3500, name: '嵐の宙域', note: '磁気嵐で船が流される', rate: 1.8, large: 0.18, huge: 0.04, belt: true, storm: true },
+  { ly: 5500, name: '深淵宙域', note: '巨大デブリが現れる', rate: 2.15, large: 0.22, huge: 0.1, belt: true, storm: true }
+];
+export const zoneAt = (ly) => ZONES.reduce((z, x) => (ly >= x.ly ? x : z), ZONES[0]);
+// 大きなデブリに当たったときに減る耐久(ふつうのデブリは減速だけ)
+export const DEBRIS_DMG = { large: 8, huge: 16 };
+
 // 着陸後の探索地点
 export const KINDS = {
   vein: { name: '鉱脈' },
@@ -110,7 +123,7 @@ export const PARTS = [
   { key: 'lightkit', crew: 'engineer', name: '軽量化キット', desc: '重さ -3(他のパーツの重さを打ち消す)', weight: -3, cost: { forest2: 10, gas2: 6, blueprint: 1 } },
   { key: 'absorber', crew: 'armor', name: '衝撃吸収材', desc: 'デブリに当たったときの減速が半分', weight: 1, cost: { forest1: 25, ice1: 10 } },
   { key: 'frame', crew: 'armor', name: '補強フレーム', desc: '最大耐久 +25', weight: 3, cost: { machine1: 30, lava1: 10 } },
-  { key: 'gear', crew: 'armor', name: '着陸ギア', desc: '不時着のダメージが半分', weight: 2, cost: { machine1: 20, forest1: 15 } },
+  { key: 'gear', crew: 'armor', name: '偏向フィールド', desc: '大型デブリに当たったときのダメージが半分', weight: 2, cost: { machine1: 20, forest1: 15 } },
   { key: 'heatshield', crew: 'armor', name: '耐熱シールド', desc: '危険地帯で機体が傷つかない', weight: 2, cost: { lava2: 10, ice2: 6, blueprint: 1 } },
   { key: 'container', crew: 'armor', name: '増設コンテナ', desc: '積載量 +20', weight: 3, cost: even(1, 6) }
 ];
