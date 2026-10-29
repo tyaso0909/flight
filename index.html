@@ -83,6 +83,8 @@
         <div class="ship-name"><span id="bShipName">小型偵察機</span><small id="bShipSub">強化 Lv 0 / 25</small></div>
         <div class="stat"><span>燃料</span><div class="bar fuel"><i id="bFuelBar"></i></div><span id="bFuel" class="v">100</span></div>
         <div class="stat"><span>耐久</span><div class="bar hull"><i id="bHullBar"></i></div><span id="bHull" class="v">100</span></div>
+        <div class="stat"><span>積載</span><div class="bar cargo"><i id="bCargoBar"></i></div><span id="bCargo" class="v">40</span></div>
+        <p id="bCargoNote" class="stat-note"></p>
         <div id="bChips" class="actions" style="margin-bottom:.8em"></div>
         <p class="note" id="ctrlNote"></p>
         <h2 style="margin-top:1em">仲間</h2>
@@ -155,6 +157,11 @@
       <div id="exMap" class="ex-map" role="group" aria-label="探索地点"></div>
       <div class="ex-side">
         <div class="mfd-row"><span>残りの探索</span><span id="exPips" class="pips"></span></div>
+        <div class="cargo-box">
+          <div class="mfd-row"><span>積載</span><span id="exCargoNum" class="cargo-num">0 / 40</span></div>
+          <div id="exCargoBar" class="bar cargo"><i id="exCargoFill"></i></div>
+          <p id="exCargoWarn" class="cargo-warn" hidden></p>
+        </div>
         <p id="exHint" class="note" style="margin:0"></p>
         <ul id="exLog" class="ex-log"></ul>
         <div class="actions"><button id="btnExDone" class="btn primary" type="button">拠点へ帰還</button></div>

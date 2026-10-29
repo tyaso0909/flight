@@ -15,7 +15,8 @@ const M = {
   tank: new THREE.MeshStandardMaterial({ color: 0x9fb7d6, roughness: 0.45, metalness: 0.5, flatShading: true }),
   plate: new THREE.MeshStandardMaterial({ color: 0x5b6573, roughness: 0.7, metalness: 0.4, flatShading: true }),
   heat: new THREE.MeshStandardMaterial({ color: 0x6b2a1c, roughness: 0.85, metalness: 0.2, emissive: 0x2a0a04, flatShading: true }),
-  burner: new THREE.MeshBasicMaterial({ color: 0xff7a3a })
+  burner: new THREE.MeshBasicMaterial({ color: 0xff7a3a }),
+  crate: new THREE.MeshStandardMaterial({ color: 0x9a7b4f, roughness: 0.8, metalness: 0.15, flatShading: true })
 };
 const thinMat = M.hull.clone();
 thinMat.side = THREE.DoubleSide;
@@ -69,6 +70,11 @@ function addTank(g, t, lv) {
   tg.position.set(t.x, t.y, t.z);
   g.add(tg);
 }
+// 貨物コンテナ(積載量の強化・増設コンテナ)
+function addCrate(g, a) {
+  part(g, box(a.w, a.h, a.d), M.crate, [a.x, a.y, a.z]);
+  part(g, box(a.w + 0.01, a.h + 0.01, Math.min(0.06, a.d * 0.15)), M.accent, [a.x, a.y, a.z]);
+}
 function addPlate(g, a) { part(g, box(a.w, a.h, a.d), M.plate, [a.x, a.y, a.z]); }
 function addRcs(g, a) {
   part(g, box(0.13, 0.1, 0.18), M.dark, [a.x, a.y, a.z]);
@@ -88,12 +94,14 @@ function addNozzle(g, e, lv) {
 const TANK_G = [0, 1, 1, 2, 2, 2];
 const RCS_G = [0, 1, 1, 2, 2, 3];
 const INTAKE_G = [0, 1, 1, 1, 2, 2];
+const CARGO_G = [0, 1, 1, 2, 2, 3];
 function applyUpgrades(g, slots, lv) {
   const take = (groups, n) => groups.slice(0, n).flat();
   take(slots.tanks, TANK_G[lv.tank]).forEach(t => addTank(g, t, lv.tank));
   take(slots.armor, Math.min(lv.armor, slots.armor.length)).forEach(a => addPlate(g, a));
   take(slots.rcs, RCS_G[lv.gyro]).forEach(a => addRcs(g, a));
   take(slots.intakes, INTAKE_G[lv.eff]).forEach(a => addIntake(g, a, lv.eff));
+  take(slots.cargo, CARGO_G[lv.cargo || 0]).forEach(a => addCrate(g, a));
   slots.engines.forEach(e => addNozzle(g, e, lv.engine));
 }
 
@@ -107,6 +115,7 @@ function applyParts(g, slots, parts) {
     part(g, box(0.06, 0.3, 0.06), M.dark, [a.x, a.y, a.z]);
     part(g, box(0.2, 0.03, 0.2), M.dark, [a.x, a.y - 0.16, a.z]);
   });
+  if (has('container')) slots.bigCargo.forEach(a => addCrate(g, a));
   if (has('heatshield')) {
     const sh = slots.shield;
     if (sh.cone) part(g, coneFwd(sh.r, sh.len, 12), M.heat, [sh.x, sh.y, sh.z]);
@@ -141,7 +150,9 @@ function scout(g) {
     extraTank: sym(0.78, -0.2, 0.5, { len: 0.75, r: 0.1 }),
     rails: sym(0.53, -0.14, 0.35, { w: 0.04, h: 0.06, d: 1.8 }),
     legs: [{ x: 0, y: -0.62, z: -0.9 }, ...sym(0.55, -0.35, 0.75)],
-    shield: { cone: true, x: 0, y: 0, z: -1.78, r: 0.4, len: 0.55 }
+    shield: { cone: true, x: 0, y: 0, z: -1.78, r: 0.4, len: 0.55 },
+    cargo: [sym(0.42, -0.34, -0.3, { w: 0.18, h: 0.2, d: 0.5 }), [{ x: 0, y: -0.48, z: -0.95, w: 0.3, h: 0.18, d: 0.45 }], sym(0.95, -0.16, 0.25, { w: 0.3, h: 0.14, d: 0.4 })],
+    bigCargo: [{ x: 0, y: 0.56, z: 0.12, w: 0.42, h: 0.22, d: 0.5 }]
   };
 }
 
@@ -172,7 +183,9 @@ function hauler(g) {
     extraTank: sym(1.0, -0.6, 0.35, { len: 1.3, r: 0.13 }),
     rails: sym(0.7, 0.53, 0.2, { w: 0.06, h: 0.05, d: 2.4 }),
     legs: [...sym(0.6, -0.68, -0.7), ...sym(0.6, -0.68, 1.1)],
-    shield: { x: 0, y: -0.12, z: -1.8, w: 1.0, h: 0.14, d: 0.08 }
+    shield: { x: 0, y: -0.12, z: -1.8, w: 1.0, h: 0.14, d: 0.08 },
+    cargo: [[{ x: 0, y: 0.64, z: -0.8, w: 0.9, h: 0.26, d: 0.45 }], sym(1.0, 0.47, 0.95, { w: 0.42, h: 0.3, d: 0.55 }), sym(1.0, 0.47, 0.15, { w: 0.42, h: 0.3, d: 0.55 })],
+    bigCargo: [{ x: 0, y: -0.75, z: 0.2, w: 1.0, h: 0.34, d: 1.3 }]
   };
 }
 
@@ -205,7 +218,9 @@ function explorer(g) {
     extraTank: [{ x: 0, y: 0.5, z: 1.4, len: 0.8, r: 0.13 }],
     rails: sym(0.2, 0.12, 0.15, { w: 0.04, h: 0.04, d: 3.0 }),
     legs: [{ x: 0, y: -0.6, z: -1.6 }, ...sym(0.45, -0.82, 0.35)],
-    shield: { x: 0, y: -0.05, z: -2.42, w: 0.62, h: 0.5, d: 0.06 }
+    shield: { x: 0, y: -0.05, z: -2.42, w: 0.62, h: 0.5, d: 0.06 },
+    cargo: [[{ x: 0, y: 0.3, z: -0.75, w: 0.36, h: 0.22, d: 0.45 }], [{ x: 0, y: -0.3, z: -0.75, w: 0.36, h: 0.22, d: 0.45 }], sym(0.33, 0, -0.75, { w: 0.2, h: 0.3, d: 0.45 })],
+    bigCargo: [{ x: 0, y: -0.58, z: 1.55, w: 0.5, h: 0.3, d: 0.6 }]
   };
 }
 

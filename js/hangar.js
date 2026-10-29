@@ -16,6 +16,7 @@ const TABS = { up: ['tabUp', 'hgUpgrade'], parts: ['tabParts', 'hgParts'], build
 
 // 強化の費用(主・副の素材はレア度つき)
 const costList = (u, target) => {
+  if (u.costs) return toList(u.costs[target]);
   const c = UPGRADE_COST[target];
   const list = [{ k: resKey(u.res[0], c.main[0]), n: c.main[1] }, { k: resKey(u.res[1], c.sub[0]), n: c.sub[1] }];
   if (c.bp) list.push({ k: BLUEPRINT.key, n: c.bp });
@@ -42,9 +43,10 @@ function effectText(key, kind, lvNow, lvNext) {
     engine: (s) => `${Math.round(s.accel)}`,
     eff: (s) => `${s.burn.toFixed(1)}/秒`,
     gyro: (s) => `${Math.round(s.steer * 100)}%`,
-    armor: (s) => `${s.maxHull}`
+    armor: (s) => `${s.maxHull}`,
+    cargo: (s) => `${s.cargo}`
   }[key];
-  const label = { tank: '燃料', engine: '加速', eff: '消費', gyro: '旋回', armor: '最大耐久' }[key];
+  const label = { tank: '燃料', engine: '加速', eff: '消費', gyro: '旋回', armor: '最大耐久', cargo: '積載' }[key];
   return b ? `${label} <b>${f(a)}</b> → <b>${f(b)}</b>` : `${label} <b>${f(a)}</b>(最大)`;
 }
 
@@ -158,7 +160,7 @@ function renderBuild() {
       <div>
         <b>${sh.name}</b>
         <div class="sh-desc">${sh.desc}</div>
-        <div class="sh-stats"><span>燃料 <b>${st.fuel}</b></span><span>加速 <b>${Math.round(st.accel)}</b></span><span>消費 <b>${st.burn.toFixed(1)}</b></span><span>旋回 <b>${Math.round(st.steer * 100)}%</b></span><span>耐久 <b>${st.maxHull}</b></span><span>パーツ枠 <b>${sh.slots}</b></span></div>
+        <div class="sh-stats"><span>燃料 <b>${st.fuel}</b></span><span>加速 <b>${Math.round(st.accel)}</b></span><span>消費 <b>${st.burn.toFixed(1)}</b></span><span>旋回 <b>${Math.round(st.steer * 100)}%</b></span><span>耐久 <b>${st.maxHull}</b></span><span>積載 <b>${st.cargo}</b></span><span>パーツ枠 <b>${sh.slots}</b></span></div>
         ${cost}
       </div>
       ${state}

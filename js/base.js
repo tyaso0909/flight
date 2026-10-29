@@ -1,7 +1,7 @@
 // 拠点(出撃準備・修理)と「数値の調整」画面
 import { $, clamp } from './dom.js';
 import { SETTINGS, TYPES, CREW, SHIPS, MAX_LV, UPGRADES, MAX_TIER, FULL_FIX_COST, resKey } from './data.js';
-import { cfg, save, persist, shipStats, maxHull, hullEffects, totalLv, resetSave } from './save.js';
+import { cfg, save, persist, shipStats, maxHull, hullEffects, totalLv, resetSave, cargoCap, hasGear } from './save.js';
 import { G } from './state.js';
 import { onShow, showScreen } from './ui.js';
 import { tilt, onFirstTilt } from './input.js';
@@ -16,6 +16,10 @@ export function renderBase() {
   $('bFuel').textContent = st.fuel;
   $('bFuelBar').style.width = clamp(st.fuel / 300 * 100, 0, 100) + '%';
   $('bHull').textContent = `${save.hull} / ${mh}`;
+  const cap = cargoCap();
+  $('bCargo').textContent = cap;
+  $('bCargoBar').style.width = clamp(cap / 200 * 100, 0, 100) + '%';
+  $('bCargoNote').textContent = hasGear('pack') ? `船 ${st.cargo} + 圧縮バッグ 10` : '';
   $('bHullBar').style.width = (save.hull / mh * 100) + '%';
   const fx = hullEffects(), chips = [];
   if (fx.low70) chips.push('旋回性ダウン(耐久70%未満)');

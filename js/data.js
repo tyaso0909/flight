@@ -36,6 +36,9 @@ const RES_BY_KEY = Object.fromEntries(RES.map(r => [r.key, r]));
 export const resName = (key) => key === BLUEPRINT.key ? BLUEPRINT.res : RES_BY_KEY[key].name;
 export const resShort = (key) => key === BLUEPRINT.key ? BLUEPRINT.short : RES_BY_KEY[key].name;
 export const resTier = (key) => RES_BY_KEY[key] ? RES_BY_KEY[key].tier : 0;
+export const resType = (key) => RES_BY_KEY[key] ? TYPES.find(t => t.key === RES_BY_KEY[key].type) : null;
+// 5つの星の素材を同じ数ずつ(積載量を増やすものの費用に使う)
+export const even = (tier, n, extra = {}) => ({ ...Object.fromEntries(TYPES.map(t => [`${t.key}${tier}`, n])), ...extra });
 
 // 星のレア度(★1〜★3)ごとの、素材のレア度(★1〜★5)の出やすさ
 export const TIER_WEIGHTS = {
@@ -80,7 +83,10 @@ export const UPGRADES = [
   { key: 'engine', name: 'エンジン', desc: 'ブーストの加速が上がる', res: ['lava', 'machine'], mult: [1, 1.13, 1.27, 1.4, 1.53, 1.67] },
   { key: 'eff', name: '燃費', desc: 'ブースト中の燃料消費が減る', res: ['forest', 'gas'], mult: [1, 0.92, 0.85, 0.78, 0.72, 0.66] },
   { key: 'gyro', name: '姿勢制御', desc: '傾きへの反応が良くなる', res: ['ice', 'machine'], mult: [1, 1.08, 1.16, 1.24, 1.32, 1.4] },
-  { key: 'armor', name: '装甲', desc: '最大耐久が増える', res: ['machine', 'ice'], mult: [1, 1.15, 1.3, 1.45, 1.6, 1.8] }
+  { key: 'armor', name: '装甲', desc: '最大耐久が増える', res: ['machine', 'ice'], mult: [1, 1.15, 1.3, 1.45, 1.6, 1.8] },
+  // 貨物室だけは5つの星の素材をまんべんなく使う(costs に段階ごとの費用を直接書く)
+  { key: 'cargo', name: '貨物室', desc: '一度に持ち帰れる素材が増える', mult: [1, 1.25, 1.5, 1.8, 2.1, 2.5],
+    costs: [null, even(1, 4), even(1, 8), even(2, 4), even(3, 3, { blueprint: 1 }), even(4, 2, { blueprint: 2 })] }
 ];
 // その段階に上げる費用。main / sub は [素材のレア度, 数]、bp は設計図のかけら
 export const UPGRADE_COST = [null,
@@ -102,7 +108,8 @@ export const PARTS = [
   { key: 'absorber', crew: 'armor', name: '衝撃吸収材', desc: 'デブリに当たったときの減速が半分', weight: 1, cost: { forest1: 25, ice1: 10 } },
   { key: 'frame', crew: 'armor', name: '補強フレーム', desc: '最大耐久 +25', weight: 3, cost: { machine1: 30, lava1: 10 } },
   { key: 'gear', crew: 'armor', name: '着陸ギア', desc: '不時着のダメージが半分', weight: 2, cost: { machine1: 20, forest1: 15 } },
-  { key: 'heatshield', crew: 'armor', name: '耐熱シールド', desc: '危険地帯で機体が傷つかない', weight: 2, cost: { lava2: 10, ice2: 6, blueprint: 1 } }
+  { key: 'heatshield', crew: 'armor', name: '耐熱シールド', desc: '危険地帯で機体が傷つかない', weight: 2, cost: { lava2: 10, ice2: 6, blueprint: 1 } },
+  { key: 'container', crew: 'armor', name: '増設コンテナ', desc: '積載量 +20', weight: 3, cost: even(1, 6) }
 ];
 
 // 探索装備(道具職人が作る)。一度作ればずっと有効。needs は先に作っておく装備
@@ -114,23 +121,24 @@ export const GEAR = [
   { key: 'firesuit', name: '耐火スーツ', desc: '火山星の「溶岩洞窟」に入れる', cost: { ice2: 8, lava1: 15 } },
   { key: 'divesuit', name: 'ダイビングスーツ', desc: '森林星の「水没した森」に入れる', cost: { forest1: 20, gas2: 6 } },
   { key: 'hacktool', name: 'ハッキングツール', desc: '機械星の「封鎖区画」に入れる', cost: { machine1: 15, ice2: 6 } },
-  { key: 'gasmask', name: 'ガスマスク', desc: 'ガス星の「濃霧の谷」に入れる', cost: { gas1: 20, forest2: 6 } }
+  { key: 'gasmask', name: 'ガスマスク', desc: 'ガス星の「濃霧の谷」に入れる', cost: { gas1: 20, forest2: 6 } },
+  { key: 'pack', name: '圧縮バッグ', desc: '素材を圧縮して運べる。積載量 +10(どの船でも有効)', cost: even(2, 3) }
 ];
 export const gearName = (key) => GEAR.find(g => g.key === key).name;
 
-// 船の種類。base は小型偵察機を1とした倍率(hull だけは最大耐久の値)。slots はパーツ枠の数
+// 船の種類。base は小型偵察機を1とした倍率(hull は最大耐久、cargo は積載量の値)。slots はパーツ枠の数
 export const SHIPS = {
   scout: {
     name: '小型偵察機', desc: '初期機体。軽くて曲がりやすい', slots: 3,
-    base: { tank: 1, accel: 1, burn: 1, steer: 1, hull: 100 }, cost: null
+    base: { tank: 1, accel: 1, burn: 1, steer: 1, hull: 100, cargo: 40 }, cost: null
   },
   hauler: {
     name: '輸送船', desc: '頑丈で耐久が高い。重く、曲がりにくい', slots: 4,
-    base: { tank: 1.1, accel: 0.85, burn: 1.15, steer: 0.8, hull: 150 }, cost: { machine2: 30, ice2: 15, blueprint: 2 }
+    base: { tank: 1.1, accel: 0.85, burn: 1.15, steer: 0.8, hull: 150, cargo: 90 }, cost: { machine2: 30, ice2: 15, blueprint: 2 }
   },
   explorer: {
     name: '長距離探査船', desc: '大きな燃料タンクで遠くまで行ける', slots: 3,
-    base: { tank: 1.5, accel: 0.95, burn: 0.9, steer: 0.85, hull: 90 }, cost: { gas3: 15, lava2: 15, blueprint: 3 }
+    base: { tank: 1.5, accel: 0.95, burn: 0.9, steer: 0.85, hull: 90, cargo: 35 }, cost: { gas3: 15, lava2: 15, blueprint: 3 }
   }
 };
 export const SHIP_ORDER = ['scout', 'hauler', 'explorer'];

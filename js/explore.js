@@ -1,8 +1,9 @@
 // 着陸後の探索(星の地図から探索地点を選ぶ)
+// 手に入れた素材はいったん「積み荷」に入れ、帰還するときに積載量の範囲で持ち帰る
 import { $, rnd, stars } from './dom.js';
-import { KINDS, CREW, SPECIAL, TIER_WEIGHTS, TIER_QTY, MAX_TIER, resKey, resTier, gearName } from './data.js';
-import { resLabel } from './resui.js';
-import { save, persist, partFx, hasGear, hasCrew } from './save.js';
+import { KINDS, CREW, SPECIAL, TIER_WEIGHTS, TIER_QTY, MAX_TIER, BLUEPRINT, resKey, resTier, gearName } from './data.js';
+import { dropRow } from './resui.js';
+import { save, persist, partFx, hasGear, hasCrew, cargoCap } from './save.js';
 import { G } from './state.js';
 import { showScreen } from './ui.js';
 import { scene, world, clearWorld, resetCamera } from './world.js';
@@ -11,10 +12,11 @@ const CRASH_DAMAGE = 30;   // 不時着で減る耐久
 const DANGER_DAMAGE = 10;  // 危険地帯の落石で減る耐久
 const rarMult = (p) => [1, 1.6, 2.5][p.rar - 1];
 
-function addRes(key, n) {
-  save.res[key] = (save.res[key] || 0) + n;
+// 積み荷に入れる(設計図のかけらは積載量に数えない)
+function addLoot(key, n) {
   G.ex.gained[key] = (G.ex.gained[key] || 0) + n;
 }
+const cargoUsed = (gained) => Object.entries(gained).reduce((s, [k, n]) => s + (k === BLUEPRINT.key ? 0 : n), 0);
 
 // 着陸演出のあとに呼ばれる
 export function beginExplore(p, crash, run) {
@@ -29,7 +31,7 @@ export function beginExplore(p, crash, run) {
   const acts = crash ? 1 : 2;
   G.ex = {
     p, crash, hullBefore, ly: Math.round(run.dist / 10), fuel: Math.round(run.fuel), maxFuel: run.maxFuel,
-    actions: acts, maxActions: acts, nodes: makeNodes(p), gained: {}, crew: [], log: []
+    actions: acts, maxActions: acts, nodes: makeNodes(p), gained: {}, crew: [], log: [], cap: cargoCap()
   };
   G.mode = 'explore';
   renderExplore();
@@ -67,13 +69,14 @@ function drop(p, { shift = 0, mult = 1, upChance = 0 } = {}) {
   if (upChance && Math.random() < upChance) tier = Math.min(MAX_TIER, tier + 1);
   const n = Math.max(1, Math.round(rnd(4, 7) * rarMult(p) * TIER_QTY[tier] * mult));
   const key = resKey(p.type.key, tier);
-  addRes(key, n);
+  addLoot(key, n);
   return { key, n };
 }
-function dropText(drops) {
+// 同じ素材をまとめ、レア度の高い順に並べる
+function merge(drops) {
   const sum = {};
   drops.forEach(d => { sum[d.key] = (sum[d.key] || 0) + d.n; });
-  return Object.entries(sum).map(([k, n]) => `${resLabel(k)} ×${n}`).join('、');
+  return Object.entries(sum).map(([key, n]) => ({ key, n })).sort((a, b) => resTier(b.key) - resTier(a.key));
 }
 
 const drillMult = () => hasGear('drill2') ? 1.6 : hasGear('drill1') ? 1.3 : 1;
@@ -84,48 +87,49 @@ function explore(node) {
   const p = ex.p;
   if (node.kind === 'special' && !hasGear(SPECIAL[p.type.key].gear)) return;
   node.done = true; node.hidden = false; ex.actions--;
-  let text = '', cls = '', label = KINDS[node.kind].name;
+  let drops = [], cls = '', label = KINDS[node.kind].name;
+  const notes = [];  // 素材以外の出来事 { text, cls }
   if (node.kind === 'vein') {
     const miner = hasCrew('miner') ? 1.3 : 1;
     const opt = { mult: drillMult() * miner, upChance: hasGear('drill2') ? 0.3 : 0 };
-    text = dropText([drop(p, opt), drop(p, opt)]);
-    const notes = [];
-    if (miner > 1) notes.push('採掘士');
-    if (drillMult() > 1) notes.push(hasGear('drill2') ? '精密ドリル' : '強化ドリル');
-    if (notes.length) text += `(${notes.join('と')}で増量)`;
+    drops = [drop(p, opt), drop(p, opt)];
+    const by = [];
+    if (miner > 1) by.push('採掘士');
+    if (drillMult() > 1) by.push(hasGear('drill2') ? '精密ドリル' : '強化ドリル');
+    if (by.length) notes.push({ text: `${by.join('と')}のおかげで増量`, cls: '' });
   } else if (node.kind === 'ruin') {
-    text = dropText([drop(p)]);
+    drops = [drop(p)];
     const bp = 0.35 + 0.15 * (p.rar - 1) + (hasGear('goggles') ? 0.15 : 0);
-    if (Math.random() < bp) { addRes('blueprint', 1); text += '、設計図のかけら ×1'; }
+    if (Math.random() < bp) { addLoot(BLUEPRINT.key, 1); drops.push({ key: BLUEPRINT.key, n: 1 }); }
   } else if (node.kind === 'village') {
-    const got = dropText([drop(p, { mult: 0.6 })]);
+    drops = [drop(p, { mult: 0.6 })];
     const left = CREW.filter(c => !hasCrew(c.key));
     if (left.length && Math.random() < 0.6) {
       const c = left[Math.floor(Math.random() * left.length)];
       save.crew.push({ key: c.key, planet: `${p.type.name} ${p.name}` });
       ex.crew.push(c);
-      text = `${c.role}の${c.name}が仲間になった。お礼に${got}`;
+      notes.push({ text: `${c.role}の${c.name}が仲間になった(お礼に素材をもらった)`, cls: 'good' });
       cls = 'crew';
     } else {
-      text = `${left.length ? '誰もいなかった' : '集落の人から物資をもらった'}。${got}`;
+      notes.push({ text: left.length ? '誰もいなかった' : '集落の人から物資をもらった', cls: '' });
     }
   } else if (node.kind === 'danger') {
-    text = dropText([drop(p, { shift: 1 }), drop(p, { shift: 1 })]);
+    drops = [drop(p, { shift: 1 }), drop(p, { shift: 1 })];
     const rockfall = Math.random() < 0.45;
     if (rockfall && partFx().dangerSafe) {
-      text += '。落石があったが、耐熱シールドで無傷';
+      notes.push({ text: '落石があったが、耐熱シールドで無傷', cls: 'good' });
     } else if (rockfall) {
       const before = save.hull;
       save.hull = Math.max(0, save.hull - DANGER_DAMAGE);
-      text += `。落石で耐久 ${before} → ${save.hull}`;
+      notes.push({ text: `落石で耐久 ${before} → ${save.hull}`, cls: 'bad' });
       cls = 'bad';
     }
   } else {
     label = SPECIAL[p.type.key].name;
-    text = dropText([drop(p, { shift: 2, mult: 1.2 }), drop(p, { shift: 2, mult: 1.2 })]);
+    drops = [drop(p, { shift: 2, mult: 1.2 }), drop(p, { shift: 2, mult: 1.2 })];
     cls = 'special';
   }
-  ex.log.push({ label, text, cls });
+  ex.log.unshift({ label, drops: merge(drops), notes, cls });
   persist();
   renderExplore();
 }
@@ -140,6 +144,17 @@ const GLYPH = {
   locked: '<path class="glyph" fill-rule="evenodd" d="M8 11V9.2A4 4 0 0 1 16 9.2V11H17V18H7V11ZM9.6 11H14.4V9.2A2.4 2.4 0 0 0 9.6 9.2Z"/>',
   unknown: '<text class="glyph" x="12" y="16.3" text-anchor="middle" font-size="12" font-weight="700">?</text>'
 };
+
+function renderCargo() {
+  const ex = G.ex, used = cargoUsed(ex.gained), over = used - ex.cap;
+  $('exCargoNum').textContent = `${used} / ${ex.cap}`;
+  $('exCargoNum').classList.toggle('over', over > 0);
+  $('exCargoFill').style.width = Math.min(100, used / ex.cap * 100) + '%';
+  $('exCargoBar').classList.toggle('over', over > 0);
+  const warn = $('exCargoWarn');
+  warn.hidden = over <= 0;
+  if (over > 0) warn.textContent = `積載量を ${over} 超えています。帰還するとき、★の低い素材から ${over} 個置いていきます。`;
+}
 
 function renderExplore() {
   const ex = G.ex, p = ex.p, c = p.type.css, sp = SPECIAL[p.type.key];
@@ -162,11 +177,17 @@ function renderExplore() {
     return `<button type="button" class="${cls}" data-id="${n.id}" style="left:${n.x.toFixed(1)}%;top:${n.y.toFixed(1)}%"${dis} aria-label="${aria}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="ring" cx="12" cy="12" r="11"/>${GLYPH[glyph]}</svg><span>${label}${n.done ? ' 済' : ''}${sub}</span></button>`;
   }).join('');
   $('exPips').innerHTML = Array.from({ length: ex.maxActions }, (_, i) => `<i class="pip${i < ex.actions ? ' on' : ''}"></i>`).join('');
+  renderCargo();
   $('exHint').textContent = ex.actions > 0
     ? (ex.crash ? '不時着したため、探索できるのは1回だけです。' : '調べる地点をタップしてください。')
     : '探索を終えました。';
+  // ログ(新しいものが上)。素材は1行ずつ「色 / 名前 / ★ / +数」で並べる
   $('exLog').innerHTML = ex.log.length
-    ? ex.log.map(l => `<li class="${l.cls}"><b>${l.label}</b> ${l.text}</li>`).join('')
+    ? ex.log.map((l, i) => `<li class="${l.cls}${i === 0 ? ' latest' : ''}">
+        <div class="lg-head"><b>${l.label}</b>${i === 0 ? '<span class="lg-new">いま</span>' : ''}</div>
+        ${l.drops.length ? `<ul class="drops">${l.drops.map(d => dropRow(d.key, `+${d.n}`)).join('')}</ul>` : ''}
+        ${l.notes.map(nt => `<p class="lg-note ${nt.cls}">${nt.text}</p>`).join('')}
+      </li>`).join('')
     : '<li class="empty">鉱脈は素材が多く、遺跡では設計図のかけら、集落では仲間に出会えることがあります。危険地帯はレアな素材が出やすい代わりに機体が傷つくことがあります。★の付いた特殊エリアには、専用の装備がないと入れません。</li>';
   $('btnExDone').textContent = ex.actions > 0 ? '切り上げて帰還' : '拠点へ帰還';
 }
@@ -176,24 +197,49 @@ $('exMap').addEventListener('click', (e) => {
   explore(G.ex.nodes[Number(b.dataset.id)]);
 });
 
+// 積載量を超えた分を、★の低い素材から置いていく
+function packCargo(gained, cap) {
+  const kept = { ...gained }, left = {};
+  let over = cargoUsed(gained) - cap;
+  const order = Object.keys(gained).filter(k => k !== BLUEPRINT.key).sort((a, b) => resTier(a) - resTier(b) || gained[a] - gained[b]);
+  for (const k of order) {
+    if (over <= 0) break;
+    const take = Math.min(over, kept[k]);
+    kept[k] -= take; left[k] = take; over -= take;
+    if (!kept[k]) delete kept[k];
+  }
+  return { kept, left };
+}
+
 function showExploreResult() {
   const ex = G.ex, p = ex.p;
+  const { kept, left } = packCargo(ex.gained, ex.cap);
+  Object.entries(kept).forEach(([k, n]) => { save.res[k] = (save.res[k] || 0) + n; });
+  persist();
+
   $('resTitle').textContent = `${p.type.name} ${p.name}`;
   const tag = $('resTag');
   tag.textContent = ex.crash ? '不時着' : '着陸成功';
   tag.className = 'tag ' + (ex.crash ? 'bad' : 'ok');
-  const keys = Object.keys(ex.gained).sort((a, b) => resTier(b) - resTier(a));
-  const got = keys.map(k => `${resLabel(k)} ×${ex.gained[k]}`).join('、') || 'なし';
+  const list = (obj, sign) => {
+    const ks = Object.keys(obj).sort((a, b) => resTier(b) - resTier(a));
+    return ks.length ? `<ul class="drops">${ks.map(k => dropRow(k, `${sign}${obj[k]}`)).join('')}</ul>` : 'なし';
+  };
+  const keptN = cargoUsed(kept), leftN = cargoUsed(left);
   const rows = [
     ['到達距離', `${ex.ly.toLocaleString('ja-JP')} 光年`],
     ['星のレア度', `<span class="stars">${stars(p.rar)}</span>`],
     ['探索', `${ex.maxActions - ex.actions} / ${ex.maxActions} 回${ex.crash ? '(不時着で1回に減少)' : ''}`],
-    ['獲得素材', got],
+    [`持ち帰った素材<small>${keptN} / ${ex.cap}</small>`, list(kept, '+')]
+  ];
+  if (leftN) rows.push([`置いてきた素材<small>積載オーバー</small>`, list(left, '−')]);
+  rows.push(
     ['仲間', ex.crew.length ? ex.crew.map(c => `${c.role} ${c.name}`).join('、') : 'なし'],
     ['残り燃料', `${ex.fuel} / ${ex.maxFuel}`],
     ['耐久', ex.hullBefore === save.hull ? `${save.hull}(損傷なし)` : `${ex.hullBefore} → ${save.hull}`]
-  ];
+  );
   $('resKv').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  $('resKv').classList.toggle('has-left', leftN > 0);
   clearWorld();
   G.ex = null;
   G.mode = 'result';

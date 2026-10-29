@@ -37,6 +37,7 @@ export function shipStats(kind = save.ship.kind, lv = save.ship.lv, parts = (kin
     burn: cfg.burn * b.burn * m('eff') * (1 + WEIGHT_BURN * weight),
     steer: b.steer * m('gyro'),
     maxHull: Math.round(b.hull * m('armor')) + (has('frame') ? 25 : 0),
+    cargo: Math.round(b.cargo * m('cargo')) + (has('container') ? 20 : 0),
     weight
   };
 }
@@ -124,3 +125,6 @@ try {
 
 export const hasGear = (key) => save.gear.includes(key);
 export const hasCrew = (key) => save.crew.some(c => c.key === key);
+
+// 一度に持ち帰れる素材の数(今の船 + 圧縮バッグ)
+export const cargoCap = () => shipStats().cargo + (hasGear('pack') ? 10 : 0);
