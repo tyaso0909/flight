@@ -1,7 +1,7 @@
 // 拠点(出撃準備・修理)と「数値の調整」画面
 import { $, clamp } from './dom.js';
 import { SETTINGS, TYPES, CREW, SHIPS, MAX_LV, UPGRADES, MAX_TIER, FULL_FIX_COST, resKey } from './data.js';
-import { cfg, save, persist, shipStats, maxHull, hullEffects, totalLv, resetSave, cargoCap, hasGear } from './save.js';
+import { cfg, save, persist, shipStats, maxHull, hullEffects, totalLv, resetSave, cargoCap, hasGear, crewBusy } from './save.js';
 import { G } from './state.js';
 import { onShow, showScreen } from './ui.js';
 import { tilt, onFirstTilt } from './input.js';
@@ -41,7 +41,7 @@ export function renderBase() {
     const got = save.crew.find(s => s.key === c.key);
     return `<li class="crew${got ? ' on' : ''}" title="${got ? `${got.planet}で出会った` : '集落で出会えることがある'}">
       <span class="crew-role">${c.role}</span><b>${got ? c.name : '未発見'}</b>
-      <small>${got ? c.note : '集落で出会えることがある'}</small>
+      <small>${got ? (crewBusy(c.key) ? '<em class="busy">派遣中</em>' : c.note) : '集落で出会えることがある'}</small>
     </li>`;
   }).join('');
   // ホーム画面に追加していないスマホには、全画面で遊ぶ方法を出す
@@ -66,6 +66,17 @@ onFirstTilt(() => { if (G.mode === 'base') renderBase(); });
 $('btnLaunch').addEventListener('click', launch);
 $('btnHangar').addEventListener('click', () => { G.mode = 'hangar'; showScreen('hangar'); });
 $('btnWorkshop').addEventListener('click', () => { G.mode = 'workshop'; showScreen('workshop'); });
+$('btnDispatch').addEventListener('click', () => { G.mode = 'dispatch'; showScreen('dispatch'); });
+
+// 派遣ボタンに、帰ってきた件数・派遣中の件数を出す(拠点にいる間は15秒ごとに更新)
+function renderDispatchBadge() {
+  const now = Date.now(), done = save.dispatch.filter(d => now >= d.end).length, going = save.dispatch.length - done;
+  const b = $('dispatchBadge');
+  b.textContent = done ? `${done}件 帰還!` : going ? `${going}件 派遣中` : '仲間を送り出す';
+  $('btnDispatch').classList.toggle('alert', done > 0);
+}
+onShow('base', renderDispatchBadge);
+setInterval(() => { if (G.mode === 'base') renderDispatchBadge(); }, 15000);
 
 // 応急修理(無料):出撃できる最低ラインまで戻す。ステータスダウンは残る
 $('btnQuickFix').addEventListener('click', () => {

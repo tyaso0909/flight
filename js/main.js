@@ -7,6 +7,7 @@ import './explore.js';
 import './base.js';
 import './hangar.js';
 import './workshop.js';
+import './dispatch.js';
 
 let last = performance.now();
 function frame(now) {

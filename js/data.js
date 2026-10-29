@@ -14,7 +14,8 @@ export const SETTINGS = [
   { key: 'burn', label: '燃料消費(基本値)', hint: 'ブースト1秒あたりの消費', min: 4, max: 25, step: 1, def: 10 },
   { key: 'debris', label: 'デブリの量', hint: '0で出現しない', min: 0, max: 3, step: 0.5, def: 1 },
   { key: 'sens', label: '傾きの感度', hint: '大きいほど少しの傾きで動く', min: 0.5, max: 2.5, step: 0.1, def: 1.5 },
-  { key: 'spacing', label: '星の間隔', hint: '次の星が現れるまでの距離', min: 900, max: 3000, step: 100, def: 1700 }
+  { key: 'spacing', label: '星の間隔', hint: '次の星が現れるまでの距離', min: 900, max: 3000, step: 100, def: 1700 },
+  { key: 'dispatchScale', label: '派遣にかかる時間(確認用)', hint: '1で本来の時間。0.01にすると100倍速で終わる', min: 0.01, max: 1, step: 0.01, def: 1 }
 ];
 
 // 星の属性と、そこで採れる素材(★1〜★5)。素材の名前は items を書き換えれば変えられる
@@ -68,12 +69,12 @@ export const SPECIAL = {
 
 // 仲間
 export const CREW = [
-  { key: 'miner', role: '採掘士', name: 'ドゥーラ', note: '鉱脈で手に入る素材が1.3倍' },
+  { key: 'miner', role: '採掘士', name: 'ドゥーラ', note: '鉱脈で手に入る素材が1.3倍。派遣すると持ち帰る量1.3倍' },
   { key: 'engineer', role: '技師', name: 'ミロ', note: '推進系パーツを作れる(格納庫)' },
   { key: 'armor', role: '装甲職人', name: 'ハッカ', note: '防御系パーツを作れる(格納庫)' },
   { key: 'toolsmith', role: '道具職人', name: 'ベルカ', note: '探索装備を作れる(工房)' },
-  { key: 'shipwright', role: '造船士', name: 'セナ', note: '新しい船の建造(未実装)' },
-  { key: 'navigator', role: '航法士', name: 'ルオ', note: '星図の拡張(未実装)' }
+  { key: 'shipwright', role: '造船士', name: 'セナ', note: '新しい船を建造できる(格納庫)' },
+  { key: 'navigator', role: '航法士', name: 'ルオ', note: '派遣すると時間が30%短くなる' }
 ];
 
 // 強化(素材で機体を直接強化する)。mult は Lv0〜Lv5 の倍率、res は [主, 副] の星の属性
@@ -145,3 +146,9 @@ export const SHIP_ORDER = ['scout', 'hauler', 'explorer'];
 
 // 完全修理に使う★1素材の合計
 export const FULL_FIX_COST = 20;
+
+// NPC派遣。分は本来の時間(「数値の調整」の倍率がかかる)
+export const DISPATCH = {
+  near: { name: '近く', minutes: 30, drops: 4, fill: [0.6, 0.8] },
+  far: { name: '遠く', minutes: 60, perThousandLy: 60, maxMinutes: 480, drops: 6, fill: [0.85, 1] }
+};

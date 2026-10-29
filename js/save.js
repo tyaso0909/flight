@@ -1,31 +1,46 @@
 // 調整値とセーブデータ。この端末のブラウザ(localStorage)に保存する
-import { SETTINGS, UPGRADES, SHIPS, MAX_LV, PARTS, GEAR, TYPES, RES, WEIGHT_BURN } from './data.js';
+import { SETTINGS, UPGRADES, SHIPS, MAX_LV, PARTS, GEAR, TYPES, RES, CREW, WEIGHT_BURN } from './data.js';
 
 const CFG_KEY = 'tiltflight.cfg';
 const SAVE_KEY = 'tiltflight.save';
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 
 export const cfg = { invX: false, invY: false };
 SETTINGS.forEach(s => { cfg[s.key] = s.def; });
 
 const zeroLv = () => Object.fromEntries(UPGRADES.map(u => [u.key, 0]));
 export const ZERO_LV = Object.freeze(zeroLv());
+const newShip = (kind, id) => ({ id, kind, lv: zeroLv(), parts: [], hull: SHIPS[kind].base.hull });
 
+// ships = 持っている船(船ごとに強化・付けているパーツ・耐久を持つ)、active = 今乗っている船
 export const save = {
   v: SAVE_VERSION,
-  hull: SHIPS.scout.base.hull,
   res: {},
   crew: [],
-  parts: [],                                        // 作ったパーツ
-  gear: [],                                         // 作った探索装備
-  ship: { kind: 'scout', lv: zeroLv(), parts: [] }  // parts = 今の船に付けているパーツ
+  parts: [],     // 作ったパーツ(どの船に付けるかは ships[].parts)
+  gear: [],      // 作った探索装備
+  ships: [newShip('scout', 's1')],
+  active: 's1',
+  nextId: 2,
+  best: 0,       // これまでに到達した一番遠い距離(光年)
+  dispatch: []   // 派遣中の一覧
 };
+// save.ship = 今乗っている船、save.hull = その耐久(保存はされない、ships の中身を指す)
+Object.defineProperty(save, 'ship', {
+  get() { return this.ships.find(s => s.id === this.active) || this.ships[0]; },
+  enumerable: false
+});
+Object.defineProperty(save, 'hull', {
+  get() { return this.ship.hull; },
+  set(v) { this.ship.hull = v; },
+  enumerable: false
+});
 
 // パーツの重さの合計(0未満にはならない)
 export const partsWeight = (parts) => Math.max(0, parts.reduce((s, k) => s + PARTS.find(p => p.key === k).weight, 0));
 
 // 船の性能(調整値 × 船の種類 × 強化の倍率 + パーツ)
-// 引数を省くと今の船(付けているパーツ込み)。kind と lv を渡したときはパーツなしで計算する
+// 引数を省くと今の船(付けているパーツ込み)。kind と lv だけを渡したときはパーツなしで計算する
 export function shipStats(kind = save.ship.kind, lv = save.ship.lv, parts = (kind === save.ship.kind && lv === save.ship.lv) ? save.ship.parts : []) {
   const b = SHIPS[kind].base;
   const m = (key) => UPGRADES.find(u => u.key === key).mult[lv[key] || 0];
@@ -41,6 +56,7 @@ export function shipStats(kind = save.ship.kind, lv = save.ship.lv, parts = (kin
     weight
   };
 }
+export const statsOf = (ship) => shipStats(ship.kind, ship.lv, ship.parts);
 export const maxHull = () => shipStats().maxHull;
 
 // 数値以外のパーツの効果
@@ -61,6 +77,23 @@ export function hullEffects() {
   return { steer: r < 0.7 ? 0.8 : 1, burn: r < 0.4 ? 1.3 : 1, low70: r < 0.7, low40: r < 0.4 };
 }
 
+export const hasGear = (key) => save.gear.includes(key);
+export const hasCrew = (key) => save.crew.some(c => c.key === key);
+// 派遣中かどうか
+export const shipBusy = (id) => save.dispatch.some(d => d.ship === id);
+export const crewBusy = (key) => save.dispatch.some(d => d.crew === key);
+// 拠点にいる仲間(派遣中の仲間は探索での効果を出さない)
+export const crewHere = (key) => hasCrew(key) && !crewBusy(key);
+
+// 一度に持ち帰れる素材の数(今の船 + 圧縮バッグ)
+export const cargoCap = () => shipStats().cargo + (hasGear('pack') ? 10 : 0);
+
+export function addShip(kind) {
+  const s = newShip(kind, `s${save.nextId++}`);
+  save.ships.push(s);
+  return s;
+}
+
 export function persist() {
   try {
     // 調整値は初期値から変えた項目だけ保存する(初期値を見直したとき、変えていない人には新しい値が効く)
@@ -72,18 +105,33 @@ export function persist() {
 }
 
 export function resetSave() {
-  save.hull = SHIPS.scout.base.hull;
   save.res = {};
   save.crew = [];
   save.parts = [];
   save.gear = [];
-  save.ship = { kind: 'scout', lv: zeroLv(), parts: [] };
+  save.ships = [newShip('scout', 's1')];
+  save.active = 's1';
+  save.nextId = 2;
+  save.best = 0;
+  save.dispatch = [];
   persist();
 }
 
-// 古いセーブデータを今の形に直して読み込む
+// ---------- 古いセーブデータを今の形に直して読み込む ----------
+const validParts = (arr) => Array.isArray(arr) ? [...new Set(arr.filter(k => PARTS.some(p => p.key === k)))] : [];
+function readShip(o, id) {
+  if (!o || !SHIPS[o.kind]) return null;
+  const s = newShip(o.kind, typeof o.id === 'string' ? o.id : id);
+  UPGRADES.forEach(u => {
+    const v = o.lv && o.lv[u.key];
+    if (Number.isInteger(v)) s.lv[u.key] = Math.max(0, Math.min(MAX_LV, v));
+  });
+  s.parts = validParts(o.parts);
+  if (typeof o.hull === 'number') s.hull = o.hull;
+  return s;
+}
+
 function loadSave(s) {
-  if (typeof s.hull === 'number') save.hull = s.hull;
   if (s.res && typeof s.res === 'object') {
     // v2までの素材(ice / lava など、レア度なし)は★1として引き継ぐ
     const res = {};
@@ -94,21 +142,33 @@ function loadSave(s) {
     }
     save.res = res;
   }
-  if (Array.isArray(s.crew)) save.crew = s.crew;
-  // v1(船の情報なし)は、強化0の小型偵察機として引き継ぐ
-  if (s.ship && SHIPS[s.ship.kind]) {
-    save.ship.kind = s.ship.kind;
-    UPGRADES.forEach(u => {
-      const v = s.ship.lv && s.ship.lv[u.key];
-      if (Number.isInteger(v)) save.ship.lv[u.key] = Math.max(0, Math.min(MAX_LV, v));
-    });
-  }
-  // パーツ(この版から追加。知らないパーツと重複は捨てる)
-  const valid = (arr) => Array.isArray(arr) ? [...new Set(arr.filter(k => PARTS.some(p => p.key === k)))] : [];
-  save.parts = valid(s.parts);
+  if (Array.isArray(s.crew)) save.crew = s.crew.filter(c => c && CREW.some(x => x.key === c.key));
+  save.parts = validParts(s.parts);
   save.gear = Array.isArray(s.gear) ? [...new Set(s.gear.filter(k => GEAR.some(g => g.key === k)))] : [];
-  save.ship.parts = valid(s.ship && s.ship.parts).filter(k => save.parts.includes(k)).slice(0, SHIPS[save.ship.kind].slots);
-  save.hull = Math.max(0, Math.min(maxHull(), Math.round(save.hull)));
+
+  // 船:v4 は ships の一覧。v3 までは船1隻(ship)と耐久(hull)が別に入っている
+  let ships = [];
+  if (Array.isArray(s.ships)) ships = s.ships.map((o, i) => readShip(o, `s${i + 1}`)).filter(Boolean);
+  else if (s.ship) {
+    const one = readShip({ ...s.ship, hull: s.hull }, 's1');
+    if (one) ships = [one];
+  } else if (typeof s.hull === 'number') ships = [readShip({ kind: 'scout', hull: s.hull }, 's1')];
+  if (!ships.length) ships = [newShip('scout', 's1')];
+  // 同じ種類の船は1隻まで、同じパーツは1隻にだけ付ける
+  const seenKind = new Set(), seenPart = new Set();
+  ships = ships.filter(sh => !seenKind.has(sh.kind) && seenKind.add(sh.kind));
+  ships.forEach(sh => {
+    sh.parts = sh.parts.filter(k => save.parts.includes(k) && !seenPart.has(k) && seenPart.add(k)).slice(0, SHIPS[sh.kind].slots);
+    sh.hull = Math.max(0, Math.min(statsOf(sh).maxHull, Math.round(sh.hull)));
+  });
+  save.ships = ships;
+  save.active = ships.some(sh => sh.id === s.active) ? s.active : ships[0].id;
+  const maxNum = Math.max(...ships.map(sh => parseInt(sh.id.slice(1), 10) || 0));
+  save.nextId = Math.max(Number.isInteger(s.nextId) ? s.nextId : 0, maxNum + 1);
+  save.best = typeof s.best === 'number' ? s.best : 0;
+  save.dispatch = Array.isArray(s.dispatch)
+    ? s.dispatch.filter(d => d && ships.some(sh => sh.id === d.ship) && d.ship !== save.active && hasCrew(d.crew) && typeof d.end === 'number')
+    : [];
 }
 
 try {
@@ -122,9 +182,3 @@ try {
   const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
   if (s) loadSave(s);
 } catch (e) { /* 保存なしで始める */ }
-
-export const hasGear = (key) => save.gear.includes(key);
-export const hasCrew = (key) => save.crew.some(c => c.key === key);
-
-// 一度に持ち帰れる素材の数(今の船 + 圧縮バッグ)
-export const cargoCap = () => shipStats().cargo + (hasGear('pack') ? 10 : 0);

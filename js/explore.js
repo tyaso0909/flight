@@ -3,7 +3,7 @@
 import { $, rnd, stars } from './dom.js';
 import { KINDS, CREW, SPECIAL, TIER_WEIGHTS, TIER_QTY, MAX_TIER, BLUEPRINT, resKey, resTier, gearName } from './data.js';
 import { dropRow } from './resui.js';
-import { save, persist, partFx, hasGear, hasCrew, cargoCap } from './save.js';
+import { save, persist, partFx, hasGear, hasCrew, crewHere, cargoCap } from './save.js';
 import { G } from './state.js';
 import { showScreen } from './ui.js';
 import { scene, world, clearWorld, resetCamera } from './world.js';
@@ -21,6 +21,7 @@ const cargoUsed = (gained) => Object.entries(gained).reduce((s, [k, n]) => s + (
 // 着陸演出のあとに呼ばれる
 export function beginExplore(p, crash, run) {
   const hullBefore = save.hull;
+  save.best = Math.max(save.best || 0, Math.round(run.dist / 10));  // 派遣の「遠く」に使う
   if (crash) save.hull = Math.max(0, save.hull - Math.round(CRASH_DAMAGE * partFx().crash));
   persist();
   // 着陸した星だけ残し、探索画面の背景に見せる
@@ -90,7 +91,7 @@ function explore(node) {
   let drops = [], cls = '', label = KINDS[node.kind].name;
   const notes = [];  // 素材以外の出来事 { text, cls }
   if (node.kind === 'vein') {
-    const miner = hasCrew('miner') ? 1.3 : 1;
+    const miner = crewHere('miner') ? 1.3 : 1;  // 派遣中の採掘士は効果なし
     const opt = { mult: drillMult() * miner, upChance: hasGear('drill2') ? 0.3 : 0 };
     drops = [drop(p, opt), drop(p, opt)];
     const by = [];

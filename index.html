@@ -113,6 +113,7 @@
       <button id="btnLaunch" class="btn primary big" type="button">出撃する</button>
       <button id="btnHangar" class="btn" type="button">格納庫<small>強化・パーツ・造船</small></button>
       <button id="btnWorkshop" class="btn" type="button">工房<small>探索装備</small></button>
+      <button id="btnDispatch" class="btn" type="button">派遣<small id="dispatchBadge">仲間を送り出す</small></button>
       <button id="btnQuickFix" class="btn" type="button" hidden>応急修理<small>無料</small></button>
       <button id="btnFullFix" class="btn" type="button" hidden>完全修理<small>★1素材20</small></button>
       <span class="pn-spacer"></span>
@@ -162,6 +163,31 @@
     <footer class="pn-foot">
       <div id="wsRes" class="hg-res" aria-label="持っている素材"></div>
       <button id="btnWsBack" class="btn" type="button">拠点へ戻る</button>
+    </footer>
+  </section>
+
+  <!-- NPC派遣 -->
+  <section id="scrDispatch" class="panel dispatch" hidden aria-labelledby="dpTitle">
+    <header class="pn-head">
+      <div class="pn-title"><p class="eyebrow">派遣</p><h1 id="dpTitle">仲間を送り出す</h1></div>
+      <p class="pn-head-side note">現実の時間で進み、ゲームを閉じていても帰ってきます。</p>
+    </header>
+    <div class="pn-body">
+      <div class="dp-cols">
+        <div>
+          <h2>派遣中</h2>
+          <div id="dpActive" class="dp-active"></div>
+        </div>
+        <div>
+          <h2>新しく派遣する</h2>
+          <div id="dpForm"></div>
+        </div>
+      </div>
+    </div>
+    <footer class="pn-foot">
+      <button id="btnDpBack" class="btn" type="button">拠点へ戻る</button>
+      <p id="dpSummary" class="foot-hint" style="text-align:right"></p>
+      <button id="btnDpGo" class="btn primary big" type="button">送り出す</button>
     </footer>
   </section>
 

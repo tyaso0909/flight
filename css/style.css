@@ -434,3 +434,33 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .res-loot h2.left .loot-n, .left-list .dq { color: var(--warn); }
 .res-loot .drops { gap: 0.3em; max-width: 20em; }
 .res-loot h2 { max-width: 24em; }
+
+/* 造船タブ */
+.sh-tag { font-size: 0.7em; margin-left: 0.5em; padding: 0.05em 0.55em; border-radius: 999px; border: 1px solid var(--edge); color: var(--muted); vertical-align: 0.1em; }
+.sh-row:focus-visible { outline: 2px solid var(--ice); outline-offset: 1px; }
+
+/* 派遣 */
+.dispatch { width: min(95%, 1000px); height: min(90%, 640px); }
+.dp-cols { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 1.4em; align-items: start; }
+.dp-active { display: grid; gap: 0.6em; }
+.dp-card { border: 1px solid var(--edge); border-radius: 8px; padding: 0.6em 0.8em; display: grid; gap: 0.45em; }
+.dp-card.done { border-color: var(--ok); background: rgba(127, 224, 160, 0.06); }
+.dp-top { display: flex; justify-content: space-between; gap: 0.6em; flex-wrap: wrap; align-items: baseline; }
+.dp-top span { color: var(--muted); font-size: 0.85em; }
+.dp-bar > i { background: var(--ice); transition: width 0.9s linear; }
+.dp-card.done .dp-bar > i { background: var(--ok); }
+.dp-bottom { display: flex; justify-content: space-between; align-items: center; gap: 0.6em; min-height: 44px; }
+.dp-time { font-family: var(--font-inst); color: var(--amber); font-variant-numeric: tabular-nums; }
+.dp-card.done .dp-time { color: var(--ok); }
+.dp-got { border: 1px solid var(--amber-dim); border-radius: 8px; padding: 0.6em 0.8em; background: rgba(255, 184, 77, 0.05); }
+.dp-got .drops { max-width: 20em; }
+.picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(9em, 1fr)); gap: 0.4em; }
+.picks.two { grid-template-columns: 1fr 1fr; }
+.pick { min-height: 44px; text-align: left; display: grid; gap: 0.1em; padding: 0.45em 0.7em; border-radius: 8px; border: 1px solid var(--edge); background: var(--metal-2); color: var(--text); cursor: pointer; touch-action: manipulation; }
+.pick small { color: var(--muted); font-size: 0.78em; }
+.pick.on { border-color: var(--amber); background: rgba(255, 184, 77, 0.12); box-shadow: inset 0 0 0 1px var(--amber); }
+.pick:disabled { opacity: 0.45; cursor: default; }
+.tgt-meta { display: flex; flex-wrap: wrap; gap: 0.2em 0.8em; margin-top: 0.25em; font-family: var(--font-inst); font-size: 0.78em; color: var(--amber); }
+.btn.alert { border-color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok); }
+.btn.alert small { color: var(--ok); opacity: 1; font-weight: 700; }
+.crew small .busy { font-style: normal; color: var(--ice); }

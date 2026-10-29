@@ -2,7 +2,7 @@
 import { $ } from './dom.js';
 import { BLUEPRINT, UPGRADES, UPGRADE_COST, MAX_LV, SHIPS, SHIP_ORDER, PARTS, PART_CREW, CREW, WEIGHT_BURN, resKey } from './data.js';
 import { toList, canPay, pay, costHtml, ownedResHtml } from './resui.js';
-import { save, persist, shipStats, totalLv, ZERO_LV, hasCrew } from './save.js';
+import { save, persist, shipStats, statsOf, totalLv, ZERO_LV, hasCrew, shipBusy, addShip } from './save.js';
 import { G } from './state.js';
 import { onShow, onHide, showScreen } from './ui.js';
 import { onLayout } from './orientation.js';
@@ -97,16 +97,19 @@ function renderParts() {
     const unlocked = hasCrew(crewKey);
     const rows = PARTS.filter(p => p.crew === crewKey).map(p => {
       const owned = save.parts.includes(p.key), on = eq.includes(p.key);
+      const holder = save.ships.find(s => s !== save.ship && s.parts.includes(p.key));  // 別の船に付いているか
       const list = toList(p.cost);
       let btn;
-      if (!unlocked) btn = `<span class="sh-state">${c.role}が必要</span>`;
+      if (!unlocked && !owned) btn = `<span class="sh-state">${c.role}が必要</span>`;
       else if (!owned) {
         const ok = canPay(list);
         btn = `<button class="btn up-buy${ok ? ' primary' : ''}" type="button" data-make="${p.key}"${ok ? '' : ' disabled'}>製作<span class="cost">${costHtml(list)}</span></button>`;
       } else if (on) btn = `<button class="btn up-buy on" type="button" data-unequip="${p.key}">外す<span class="cost">装着中</span></button>`;
+      else if (holder && shipBusy(holder.id)) btn = `<span class="sh-state">派遣中の${SHIPS[holder.kind].name}に装着</span>`;
       else {
         const full = eq.length >= slots;
-        btn = `<button class="btn up-buy" type="button" data-equip="${p.key}"${full ? ' disabled' : ''}>装着<span class="cost">${full ? '枠がいっぱい' : '作成済み'}</span></button>`;
+        const note = full ? '枠がいっぱい' : holder ? `${SHIPS[holder.kind].name}から付け替え` : '作成済み';
+        btn = `<button class="btn up-buy" type="button" data-equip="${p.key}"${full ? ' disabled' : ''}>装着<span class="cost">${note}</span></button>`;
       }
       const w = p.weight > 0 ? `+${p.weight}` : `${p.weight}`;
       return `<div class="up-row${on ? ' equipped' : ''}">
@@ -137,6 +140,13 @@ function equip(key, on) {
   const eq = save.ship.parts;
   if (on) {
     if (!save.parts.includes(key) || eq.includes(key) || eq.length >= slotsOf()) return;
+    // 別の船に付いていたら外してから付ける(派遣中の船からは外せない)
+    const holder = save.ships.find(s => s !== save.ship && s.parts.includes(key));
+    if (holder) {
+      if (shipBusy(holder.id)) return;
+      holder.parts.splice(holder.parts.indexOf(key), 1);
+      holder.hull = Math.min(holder.hull, statsOf(holder).maxHull);
+    }
     withHullAdjust(() => eq.push(key));
   } else {
     if (!eq.includes(key)) return;
@@ -148,24 +158,54 @@ function equip(key, on) {
 }
 
 // ---------- 造船 ----------
+// 船の種類ごとに1隻まで。持っている船は乗り換えられる
+const ownedShip = (kind) => save.ships.find(s => s.kind === kind);
 function renderBuild() {
   const hasWright = hasCrew('shipwright');
   $('hgBuild').innerHTML = SHIP_ORDER.map(kind => {
-    const sh = SHIPS[kind], st = shipStats(kind, ZERO_LV), own = kind === save.ship.kind;
-    const state = own ? '<span class="sh-state own">使用中</span>'
-      : !hasWright ? '<span class="sh-state">造船士が必要</span>'
-      : '<span class="sh-state">建造は次の段階で実装</span>';
-    const cost = sh.cost ? `<div class="sh-cost">建造:${costHtml(toList(sh.cost))}</div>` : '';
-    return `<button type="button" class="sh-row" data-ship="${kind}" aria-pressed="${kind === preview}">
+    const sh = SHIPS[kind], mine = ownedShip(kind);
+    const st = mine ? statsOf(mine) : shipStats(kind, ZERO_LV);
+    let action;
+    if (mine && mine === save.ship) action = '<span class="sh-state own">乗っている船</span>';
+    else if (mine && shipBusy(mine.id)) action = '<span class="sh-state">派遣中</span>';
+    else if (mine) action = `<button class="btn up-buy primary" type="button" data-switch="${mine.id}">乗り換える<span class="cost">耐久 ${mine.hull} / ${st.maxHull}</span></button>`;
+    else if (!hasWright) action = '<span class="sh-state">造船士が必要</span>';
+    else {
+      const list = toList(sh.cost), ok = canPay(list);
+      action = `<button class="btn up-buy${ok ? ' primary' : ''}" type="button" data-build="${kind}"${ok ? '' : ' disabled'}>建造<span class="cost">${costHtml(list)}</span></button>`;
+    }
+    const note = mine ? `<div class="sh-cost">強化 Lv ${totalLv(mine.lv)} / ${UPGRADES.length * MAX_LV} ・ パーツ ${mine.parts.length} / ${sh.slots}</div>` : '';
+    return `<div class="sh-row" data-ship="${kind}" aria-pressed="${kind === preview}" role="button" tabindex="0">
       <div>
-        <b>${sh.name}</b>
+        <b>${sh.name}</b>${mine ? '' : '<span class="sh-tag">設計図</span>'}
         <div class="sh-desc">${sh.desc}</div>
         <div class="sh-stats"><span>燃料 <b>${st.fuel}</b></span><span>加速 <b>${Math.round(st.accel)}</b></span><span>消費 <b>${st.burn.toFixed(1)}</b></span><span>旋回 <b>${Math.round(st.steer * 100)}%</b></span><span>耐久 <b>${st.maxHull}</b></span><span>積載 <b>${st.cargo}</b></span><span>パーツ枠 <b>${sh.slots}</b></span></div>
-        ${cost}
+        ${note}
       </div>
-      ${state}
-    </button>`;
-  }).join('') + '<p class="sh-note">数値は強化前(Lv0)・パーツなしのものです。船を選ぶと左にモデルが表示されます。建造と船の乗り換えは、NPC派遣と一緒に次の段階で作ります。</p>';
+      ${action}
+    </div>`;
+  }).join('') + '<p class="sh-note">持っている船は今の強化・パーツ込みの数値、まだ持っていない船は強化前の数値です。強化・パーツ・耐久は船ごとに別々です。乗っていない船は、拠点の「派遣」で仲間と一緒に送り出せます。</p>';
+}
+
+function build(kind) {
+  const sh = SHIPS[kind];
+  if (!sh.cost || ownedShip(kind) || !hasCrew('shipwright')) return;
+  const list = toList(sh.cost);
+  if (!canPay(list)) return;
+  pay(list);
+  addShip(kind);
+  persist();
+  render();
+  if (viewer) viewer.pulse();
+}
+function switchShip(id) {
+  const s = save.ships.find(x => x.id === id);
+  if (!s || shipBusy(id)) return;
+  save.active = id;
+  persist();
+  preview = s.kind;
+  render();
+  if (viewer) viewer.pulse();
 }
 
 // ---------- 共通 ----------
@@ -182,9 +222,9 @@ function showModel() {
       : `パーツ ${save.ship.parts.length} / ${slotsOf()}`;
     $('hgTitle').textContent = SHIPS[save.ship.kind].name;
   } else {
-    const own = preview === save.ship.kind;
-    viewer.setShip(preview, own ? save.ship.lv : ZERO_LV, own ? save.ship.parts : []);
-    $('hgBadge').textContent = own ? '使用中の船' : '設計図';
+    const mine = ownedShip(preview);
+    viewer.setShip(preview, mine ? mine.lv : ZERO_LV, mine ? mine.parts : []);
+    $('hgBadge').textContent = mine === save.ship ? '乗っている船' : mine ? (shipBusy(mine.id) ? '派遣中の船' : '持っている船') : '設計図';
     $('hgTitle').textContent = SHIPS[preview].name;
   }
 }
@@ -214,10 +254,20 @@ $('hgParts').addEventListener('click', (e) => {
   else if (b.dataset.unequip) equip(b.dataset.unequip, false);
 });
 $('hgBuild').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-ship]');
-  if (!b) return;
-  preview = b.dataset.ship;
+  const act = e.target.closest('button');
+  if (act && !act.disabled) {
+    if (act.dataset.build) return build(act.dataset.build);
+    if (act.dataset.switch) return switchShip(act.dataset.switch);
+  }
+  const row = e.target.closest('[data-ship]');
+  if (!row || act) return;
+  preview = row.dataset.ship;
   render();
+});
+$('hgBuild').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const row = e.target.closest('[data-ship]');
+  if (row && e.target === row) { e.preventDefault(); preview = row.dataset.ship; render(); }
 });
 const switchTab = (t) => { if (tab === t) return; tab = t; document.querySelector('.hg-side').scrollTop = 0; render(); };
 $('tabUp').addEventListener('click', () => switchTab('up'));

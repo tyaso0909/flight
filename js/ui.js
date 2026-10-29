@@ -5,6 +5,7 @@ const SCREENS = {
   base: 'scrBase',
   hangar: 'scrHangar',
   workshop: 'scrWorkshop',
+  dispatch: 'scrDispatch',
   settings: 'scrSettings',
   explore: 'scrExplore',
   result: 'scrResult'
