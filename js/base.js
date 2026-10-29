@@ -1,0 +1,106 @@
+// 拠点(出撃準備・修理)と「数値の調整」画面
+import { $, clamp } from './dom.js';
+import { SETTINGS, TYPES, CREW, SHIPS, MAX_LV, UPGRADES } from './data.js';
+import { cfg, save, persist, shipStats, maxHull, hullEffects, totalLv, resetSave } from './save.js';
+import { G } from './state.js';
+import { onShow, showScreen } from './ui.js';
+import { tilt, onFirstTilt } from './input.js';
+import { launch } from './flight.js';
+
+const FULL_FIX_COST = 20;   // 完全修理に使う資源の合計
+const QUICK_FIX_RATE = 0.3; // 応急修理で戻る耐久(最大耐久に対する割合)
+
+export function renderBase() {
+  const st = shipStats(), mh = st.maxHull;
+  $('bShipName').textContent = SHIPS[save.ship.kind].name;
+  $('bShipSub').textContent = `強化 Lv ${totalLv()} / ${UPGRADES.length * MAX_LV}`;
+  $('bFuel').textContent = st.fuel;
+  $('bFuelBar').style.width = clamp(st.fuel / 300 * 100, 0, 100) + '%';
+  $('bHull').textContent = `${save.hull} / ${mh}`;
+  $('bHullBar').style.width = (save.hull / mh * 100) + '%';
+  const fx = hullEffects(), chips = [];
+  if (fx.low70) chips.push('旋回性ダウン(耐久70%未満)');
+  if (fx.low40) chips.push('燃費悪化(耐久40%未満)');
+  $('bChips').innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
+
+  $('resList').innerHTML = TYPES.map(t => `<li><span><span class="dot" style="background:${t.css}"></span>${t.res}<small style="color:var(--muted)">(${t.name})</small></span><b>${save.res[t.key] || 0}</b></li>`).join('')
+    + `<li><span><span class="dot" style="background:var(--amber)"></span>設計図のかけら<small style="color:var(--muted)">(遺跡)</small></span><b>${save.res.blueprint || 0}</b></li>`;
+  $('crewList').innerHTML = CREW.map(c => {
+    const got = save.crew.find(s => s.key === c.key);
+    return got
+      ? `<li><span>${c.role} ${c.name}<span class="crew-note">${c.note} / ${got.planet}で出会った</span></span><b>仲間</b></li>`
+      : `<li><span style="color:var(--muted)">${c.role}(未発見)<span class="crew-note">集落で出会えることがある</span></span><b>—</b></li>`;
+  }).join('');
+
+  const total = TYPES.reduce((s, t) => s + (save.res[t.key] || 0), 0);
+  const dead = save.hull <= 0;
+  $('btnLaunch').disabled = dead;
+  $('btnQuickFix').hidden = save.hull >= Math.ceil(mh * QUICK_FIX_RATE);
+  $('btnFullFix').hidden = save.hull >= mh;
+  $('btnFullFix').disabled = total < FULL_FIX_COST;
+  $('baseNotice').innerHTML = dead ? '<div class="notice">耐久が0のため出撃できません。修理してください。</div>' : '';
+  $('ctrlNote').innerHTML = tilt.ok
+    ? '<b>操作</b> 端末を傾けて操縦します。出撃した瞬間の持ち方がまっすぐの基準になります。'
+    : '<b>操作</b> 傾きセンサーが使えないため、左下のドラッグで操縦します(パソコンは矢印キーとスペース)。スマホで傾き操作を試すには、HTTPSのサイトで開いてください。';
+}
+onShow('base', renderBase);
+onFirstTilt(() => { if (G.mode === 'base') renderBase(); });
+
+$('btnLaunch').addEventListener('click', launch);
+$('btnHangar').addEventListener('click', () => { G.mode = 'hangar'; showScreen('hangar'); });
+
+// 応急修理(無料):出撃できる最低ラインまで戻す。ステータスダウンは残る
+$('btnQuickFix').addEventListener('click', () => {
+  save.hull = Math.max(save.hull, Math.ceil(maxHull() * QUICK_FIX_RATE));
+  persist(); renderBase();
+});
+// 完全修理:多く持っている資源から順に合計20使って、最大まで戻す
+$('btnFullFix').addEventListener('click', () => {
+  let cost = FULL_FIX_COST;
+  const byStock = TYPES.map(t => t.key).sort((a, b) => (save.res[b] || 0) - (save.res[a] || 0));
+  for (const k of byStock) {
+    const take = Math.min(cost, save.res[k] || 0);
+    save.res[k] = (save.res[k] || 0) - take; cost -= take;
+    if (!cost) break;
+  }
+  save.hull = maxHull();
+  persist(); renderBase();
+});
+
+// ---------- 数値の調整 ----------
+$('setGrid').innerHTML = SETTINGS.map(s => `
+  <div class="set-row">
+    <label for="set-${s.key}"><span>${s.label}</span><output id="out-${s.key}"></output></label>
+    <input type="range" id="set-${s.key}" min="${s.min}" max="${s.max}" step="${s.step}">
+    <small>${s.hint}</small>
+  </div>`).join('');
+function syncSettings() {
+  SETTINGS.forEach(s => { $('set-' + s.key).value = cfg[s.key]; $('out-' + s.key).textContent = cfg[s.key]; });
+  $('invX').checked = cfg.invX; $('invY').checked = cfg.invY;
+}
+SETTINGS.forEach(s => {
+  $('set-' + s.key).addEventListener('input', (e) => { cfg[s.key] = parseFloat(e.target.value); $('out-' + s.key).textContent = cfg[s.key]; persist(); });
+});
+$('invX').addEventListener('change', (e) => { cfg.invX = e.target.checked; persist(); });
+$('invY').addEventListener('change', (e) => { cfg.invY = e.target.checked; persist(); });
+onShow('settings', syncSettings);
+$('btnSettings').addEventListener('click', () => { G.mode = 'settings'; showScreen('settings'); });
+$('btnSetClose').addEventListener('click', () => { G.mode = 'base'; showScreen('base'); });
+$('btnSetReset').addEventListener('click', () => { SETTINGS.forEach(s => { cfg[s.key] = s.def; }); cfg.invX = cfg.invY = false; persist(); syncSettings(); });
+
+// セーブデータを最初からにする(画面内で2回押して確定)
+const wipe = $('btnWipe');
+let wipeArmed = false, wipeTimer = 0;
+wipe.addEventListener('click', () => {
+  if (!wipeArmed) {
+    wipeArmed = true;
+    wipe.textContent = 'もう一度押すと消えます';
+    clearTimeout(wipeTimer);
+    wipeTimer = setTimeout(() => { wipeArmed = false; wipe.textContent = 'セーブデータを最初からにする'; }, 3000);
+    return;
+  }
+  wipeArmed = false; clearTimeout(wipeTimer);
+  wipe.textContent = 'セーブデータを最初からにする';
+  resetSave();
+  G.mode = 'base'; showScreen('base');
+});
