@@ -15,6 +15,8 @@ export const SETTINGS = [
   { key: 'debris', label: 'デブリの量', hint: '0で出現しない', min: 0, max: 3, step: 0.5, def: 1 },
   { key: 'sens', label: '傾きの感度', hint: '大きいほど少しの傾きで動く', min: 0.5, max: 2.5, step: 0.1, def: 1.5 },
   { key: 'spacing', label: '星の間隔', hint: '次の星が現れるまでの距離', min: 900, max: 3000, step: 100, def: 1700 },
+  { key: 'sfxVol', label: '効果音の音量', hint: '0で効果音なし', min: 0, max: 1, step: 0.05, def: 0.7 },
+  { key: 'bgmVol', label: 'BGMの音量', hint: '0でBGMなし', min: 0, max: 1, step: 0.05, def: 0.4 },
   { key: 'dispatchScale', label: '派遣にかかる時間(確認用)', hint: '1で本来の時間。0.01にすると100倍速で終わる', min: 0.01, max: 1, step: 0.01, def: 1 }
 ];
 

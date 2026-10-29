@@ -5,7 +5,8 @@ import { cfg, save, shipStats, hullEffects, maxHull, partFx } from './save.js';
 import { G } from './state.js';
 import { showScreen } from './ui.js';
 import { view, layout, tryLandscape } from './orientation.js';
-import { scene, camera, updateStreaks, world, clearWorld, spawnPlanet, spawnDebris, capOf, resetCamera } from './world.js';
+import { scene, camera, updateStreaks, world, clearWorld, spawnPlanet, spawnDebris, capOf, resetCamera, spawnSparks } from './world.js';
+import { sfx, engine } from './audio.js';
 import { tilt, calibrate, askTilt, readInput, boostHeld, boostButton } from './input.js';
 import { beginExplore } from './explore.js';
 
@@ -19,7 +20,7 @@ export function resetRun() {
   const st = shipStats();
   Object.assign(G.run, {
     st, fx: partFx(), v: V_START, fuel: st.fuel, maxFuel: st.fuel, dist: 0, px: 0, py: 0, vx: 0, vy: 0, pull: 0, active: null,
-    nextPlanet: 500, debrisT: 1.2, shake: 0, hitFx: 0
+    nextPlanet: 500, debrisT: 1.2, shake: 0, hitFx: 0, boostFx: 0
   });
 }
 
@@ -35,10 +36,14 @@ export async function launch() {
     $('stickHint').hidden = tilt.ok;
     G.mode = 'flying';
     showScreen('flying');
+    sfx.launch();
+    engine.start();
   }, 250);
 }
 
 export function abort() {
+  engine.stop();
+  setFov(70);
   clearWorld();
   G.mode = 'base';
   resetCamera();
@@ -65,6 +70,11 @@ export function updateFlying(dt) {
   }
   run.v = clamp(run.v, V_MIN, V_MAX);
   boostButton.classList.toggle('on', boosting);
+  engine.update(run.v, boosting);
+  // ブースト中は視野が少し広がり、画面の端が光る(加速している感じ)
+  run.boostFx += ((boosting ? 1 : 0) - run.boostFx) * Math.min(1, dt * (boosting ? 5 : 2.5));
+  setFov(70 + 9 * run.boostFx);
+  $('boostFx').style.opacity = (run.boostFx * 0.9).toFixed(2);
 
   const dz = run.v * dt;
   run.dist += dz;
@@ -93,6 +103,8 @@ export function updateFlying(dt) {
     if (prev < 0 && d.z >= 0 && Math.hypot(d.x - run.px, d.y - run.py) < d.r + 4) {
       run.v = Math.max(V_MIN, run.v * run.fx.hitKeep);
       run.shake = 0.4; run.hitFx = 1;
+      sfx.hit();
+      spawnSparks(d.x, d.y, -10);
       scene.remove(d.mesh); debris.splice(i, 1);
       continue;
     }
@@ -106,6 +118,7 @@ export function updateFlying(dt) {
   if (act) {
     if (run.v < capOf(act)) run.pull += dt / 1.5; else run.pull -= dt / 0.7;
     run.pull = clamp(run.pull, 0, 1);
+    if (run.pull > 0 && run.pull < 1) sfx.warn();
     if (run.pull > 0) {
       const dx = act.x - run.px, dy = act.y - run.py, L = Math.hypot(dx, dy) || 1;
       run.px += dx / L * run.pull * 55 * dt; run.py += dy / L * run.pull * 55 * dt;
@@ -131,6 +144,13 @@ export function updateFlying(dt) {
 function startLanding(p) {
   G.mode = 'landing';
   G.land = { p, t: 0, crash: G.run.fuel <= 0, from: p.group.position.clone() };
+  engine.stop();
+  sfx.land(G.land.crash);
+  $('boostFx').style.opacity = 0;
+  // 大気圏突入:星の色に光る。不時着は赤く光る
+  $('flash').style.background = G.land.crash
+    ? 'radial-gradient(circle at 50% 55%, #ffe2c8, #ff5b3a 55%, #5a0d02)'
+    : `radial-gradient(circle at 50% 55%, #ffffff, ${p.type.css} 60%, #04060c)`;
   startQ.copy(camera.quaternion);
   boostButton.classList.remove('on');
   $('warn').hidden = true;
@@ -148,13 +168,25 @@ export function updateLanding(dt) {
   camera.quaternion.copy(startQ).slerp(lookCam.quaternion, Math.min(1, k * 1.6));
   run.v = Math.max(0, run.v - 120 * dt);
   updateStreaks(run.v * dt, run.v);
+  setFov(70 + 9 * Math.max(0, run.boostFx *= 0.95) + 14 * k);  // 近づくほど吸い込まれるように広がる
+  if (land.crash && land.t > 1.5 && !REDUCE.matches) {
+    const sh = (land.t - 1.5) * 10;
+    camera.position.x = run.px + (Math.random() - 0.5) * sh;
+    camera.position.y = run.py + (Math.random() - 0.5) * sh;
+  }
   $('flash').style.opacity = clamp((land.t - 1.7) / 0.6, 0, 1);
   if (land.t >= 2.4) {
     const { crash } = land;
     G.land = null;
+    setFov(70);
     beginExplore(p, crash, run);
     fadeFlash();
   }
+}
+function setFov(f) {
+  if (Math.abs(camera.fov - f) < 0.01) return;
+  camera.fov = f;
+  camera.updateProjectionMatrix();
 }
 function fadeFlash() {
   const f = $('flash'); let o = parseFloat(f.style.opacity || '0');

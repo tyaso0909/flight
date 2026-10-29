@@ -245,3 +245,33 @@ export function resetCamera() {
   camera.position.set(0, 0, 0);
   camera.rotation.set(0, 0, 0);
 }
+
+// ---------- デブリに当たったときの火花 ----------
+const SPARK_N = 90;
+const sparkPos = new Float32Array(SPARK_N * 3).fill(1e5);
+const sparks = Array.from({ length: SPARK_N }, () => ({ life: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 }));
+const sparkGeo = new THREE.BufferGeometry();
+sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+const sparkMat = new THREE.PointsMaterial({ color: 0xffc070, size: 3.5, sizeAttenuation: false, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+const sparkPts = new THREE.Points(sparkGeo, sparkMat);
+sparkPts.frustumCulled = false;
+scene.add(sparkPts);
+let sparkNext = 0;
+export function spawnSparks(x, y, z) {
+  for (let i = 0; i < 36; i++) {
+    const s = sparks[sparkNext]; sparkNext = (sparkNext + 1) % SPARK_N;
+    const a = Math.random() * Math.PI * 2, sp = 10 + Math.random() * 40;
+    Object.assign(s, { life: 0.35 + Math.random() * 0.35, x, y, z, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: 5 + Math.random() * 25 });
+  }
+}
+export function updateSparks(dt) {
+  let any = false;
+  sparks.forEach((s, i) => {
+    if (s.life > 0) {
+      s.life -= dt; any = true;
+      s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt;
+      sparkPos[i * 3] = s.x; sparkPos[i * 3 + 1] = s.y; sparkPos[i * 3 + 2] = s.life > 0 ? s.z : 1e5;
+    }
+  });
+  if (any) sparkGeo.attributes.position.needsUpdate = true;
+}

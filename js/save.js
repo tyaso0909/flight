@@ -5,7 +5,7 @@ const CFG_KEY = 'tiltflight.cfg';
 const SAVE_KEY = 'tiltflight.save';
 const SAVE_VERSION = 4;
 
-export const cfg = { invX: false, invY: false };
+export const cfg = { invX: false, invY: false, mute: false };
 SETTINGS.forEach(s => { cfg[s.key] = s.def; });
 
 const zeroLv = () => Object.fromEntries(UPGRADES.map(u => [u.key, 0]));
@@ -97,7 +97,7 @@ export function addShip(kind) {
 export function persist() {
   try {
     // 調整値は初期値から変えた項目だけ保存する(初期値を見直したとき、変えていない人には新しい値が効く)
-    const out = { v: 2, invX: cfg.invX, invY: cfg.invY };
+    const out = { v: 2, invX: cfg.invX, invY: cfg.invY, mute: cfg.mute };
     SETTINGS.forEach(s => { if (cfg[s.key] !== s.def) out[s.key] = cfg[s.key]; });
     localStorage.setItem(CFG_KEY, JSON.stringify(out));
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));

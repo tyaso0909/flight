@@ -7,6 +7,7 @@ import { G } from './state.js';
 import { onShow, onHide, showScreen } from './ui.js';
 import { onLayout } from './orientation.js';
 import { ShipViewer } from './ships.js';
+import { sfx } from './audio.js';
 
 let viewer = null;
 let tab = 'up';            // 'up' = 強化 / 'parts' = パーツ / 'build' = 造船
@@ -80,6 +81,7 @@ function buy(key) {
   withHullAdjust(() => { pay(list); save.ship.lv[key] = cur + 1; });
   persist();
   render();
+  sfx.buy();
   if (viewer) viewer.pulse();
 }
 
@@ -135,6 +137,7 @@ function make(key) {
   save.parts.push(key);
   persist();
   render();
+  sfx.buy();
 }
 function equip(key, on) {
   const eq = save.ship.parts;
@@ -154,6 +157,7 @@ function equip(key, on) {
   }
   persist();
   render();
+  sfx.buy();
   if (viewer) viewer.pulse();
 }
 
@@ -196,6 +200,7 @@ function build(kind) {
   addShip(kind);
   persist();
   render();
+  sfx.buy();
   if (viewer) viewer.pulse();
 }
 function switchShip(id) {

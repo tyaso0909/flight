@@ -464,3 +464,21 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .btn.alert { border-color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok); }
 .btn.alert small { color: var(--ok); opacity: 1; font-weight: 700; }
 .crew small .busy { font-style: normal; color: var(--ice); }
+
+/* ブースト中に画面の端が光る */
+#boostFx { position: absolute; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 calc(var(--lh) * 0.22) rgba(143, 211, 255, 0.55); background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(143, 211, 255, 0.08)); }
+
+/* 素材が手に入ったときに数字が弾む */
+@keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes slideIn { from { transform: translateX(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.ex-log > li.latest { animation: slideIn 0.25s ease-out; }
+.ex-log > li.latest .dq { display: inline-block; animation: pop 0.4s ease-out both; }
+.ex-log > li.latest .drop:nth-child(2) .dq { animation-delay: 0.08s; }
+.ex-log > li.latest .drop:nth-child(3) .dq { animation-delay: 0.16s; }
+.ex-node:not(:disabled) .ring { transition: stroke-width 0.15s; }
+.ex-node:not(:disabled):not(.done) svg { animation: nodePulse 2.4s ease-in-out infinite; }
+@keyframes nodePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.head-tools { display: flex; align-items: center; gap: 0.6em; }
+@media (prefers-reduced-motion: reduce) {
+  .ex-log > li.latest, .ex-log > li.latest .dq, .ex-node svg { animation: none !important; }
+}

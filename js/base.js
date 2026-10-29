@@ -6,6 +6,7 @@ import { G } from './state.js';
 import { onShow, showScreen } from './ui.js';
 import { tilt, onFirstTilt } from './input.js';
 import { launch } from './flight.js';
+import { applyVolume } from './audio.js';
 
 const QUICK_FIX_RATE = 0.3; // 応急修理で戻る耐久(最大耐久に対する割合)
 
@@ -105,17 +106,27 @@ $('setGrid').innerHTML = SETTINGS.map(s => `
   </div>`).join('');
 function syncSettings() {
   SETTINGS.forEach(s => { $('set-' + s.key).value = cfg[s.key]; $('out-' + s.key).textContent = cfg[s.key]; });
-  $('invX').checked = cfg.invX; $('invY').checked = cfg.invY;
+  $('invX').checked = cfg.invX; $('invY').checked = cfg.invY; $('optMute').checked = cfg.mute;
 }
 SETTINGS.forEach(s => {
-  $('set-' + s.key).addEventListener('input', (e) => { cfg[s.key] = parseFloat(e.target.value); $('out-' + s.key).textContent = cfg[s.key]; persist(); });
+  $('set-' + s.key).addEventListener('input', (e) => { cfg[s.key] = parseFloat(e.target.value); $('out-' + s.key).textContent = cfg[s.key]; persist(); applyVolume(); });
 });
 $('invX').addEventListener('change', (e) => { cfg.invX = e.target.checked; persist(); });
 $('invY').addEventListener('change', (e) => { cfg.invY = e.target.checked; persist(); });
+// 音のオン・オフ(拠点の見出しのボタンと、調整画面のチェック)
+function setMute(m) {
+  cfg.mute = m; persist(); applyVolume();
+  $('btnMute').textContent = m ? '音 OFF' : '音 ON';
+  $('btnMute').setAttribute('aria-pressed', String(m));
+  $('optMute').checked = m;
+}
+$('btnMute').addEventListener('click', () => setMute(!cfg.mute));
+$('optMute').addEventListener('change', (e) => setMute(e.target.checked));
+setMute(cfg.mute);
 onShow('settings', syncSettings);
 $('btnSettings').addEventListener('click', () => { G.mode = 'settings'; showScreen('settings'); });
 $('btnSetClose').addEventListener('click', () => { G.mode = 'base'; showScreen('base'); });
-$('btnSetReset').addEventListener('click', () => { SETTINGS.forEach(s => { cfg[s.key] = s.def; }); cfg.invX = cfg.invY = false; persist(); syncSettings(); });
+$('btnSetReset').addEventListener('click', () => { SETTINGS.forEach(s => { cfg[s.key] = s.def; }); cfg.invX = cfg.invY = false; persist(); syncSettings(); applyVolume(); });
 
 // セーブデータを最初からにする(画面内で2回押して確定)
 const wipe = $('btnWipe');

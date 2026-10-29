@@ -5,6 +5,7 @@ import { save, persist, cfg, statsOf, hasCrew, shipBusy, crewBusy } from './save
 import { G } from './state.js';
 import { onShow, onHide, showScreen } from './ui.js';
 import { dropRow } from './resui.js';
+import { sfx } from './audio.js';
 
 const crewOf = (key) => CREW.find(c => c.key === key);
 const shipOf = (id) => save.ships.find(s => s.id === id);
@@ -163,6 +164,7 @@ function start() {
   lastGot = null;
   persist();
   render();
+  sfx.launch();
 }
 
 function receive(id) {
@@ -173,6 +175,7 @@ function receive(id) {
   lastGot = { kind: shipOf(d.ship).kind, crew: d.crew, loot: d.loot };
   persist();
   render();
+  sfx.get(Math.max(1, ...Object.keys(d.loot).map(resTier)));
 }
 
 $('dpActive').addEventListener('click', (e) => {

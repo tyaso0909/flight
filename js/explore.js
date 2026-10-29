@@ -7,6 +7,8 @@ import { save, persist, partFx, hasGear, hasCrew, crewHere, cargoCap } from './s
 import { G } from './state.js';
 import { showScreen } from './ui.js';
 import { scene, world, clearWorld, resetCamera } from './world.js';
+import { sfx } from './audio.js';
+import { terrainURL } from './terrain.js';
 
 const CRASH_DAMAGE = 30;   // 不時着で減る耐久
 const DANGER_DAMAGE = 10;  // 危険地帯の落石で減る耐久
@@ -131,6 +133,10 @@ function explore(node) {
     cls = 'special';
   }
   ex.log.unshift({ label, drops: merge(drops), notes, cls });
+  // 一番レアな素材の音。仲間が加わったときと落石のときは別の音
+  const top = Math.max(1, ...drops.map(d => resTier(d.key)));
+  if (cls === 'crew') sfx.crew(); else sfx.get(top);
+  if (cls === 'bad') setTimeout(() => sfx.hit(), 250);
   persist();
   renderExplore();
 }
@@ -164,7 +170,7 @@ function renderExplore() {
   tag.textContent = ex.crash ? '不時着' : '着陸成功';
   tag.className = 'tag ' + (ex.crash ? 'bad' : 'ok');
   const map = $('exMap');
-  map.style.background = `radial-gradient(120% 100% at 30% 15%, ${c}55, transparent 60%), radial-gradient(90% 80% at 80% 90%, ${c}33, transparent 70%), repeating-radial-gradient(circle at 40% 60%, rgba(255,255,255,0.035) 0 2px, transparent 2px 18px), #0a0e16`;
+  map.style.background = `radial-gradient(120% 100% at 30% 15%, ${c}33, transparent 60%), url(${terrainURL(p.type.key, p.name)}) center / cover no-repeat, #0a0e16`;
   map.innerHTML = ex.nodes.map(n => {
     const isSp = n.kind === 'special';
     const locked = isSp && !hasGear(sp.gear);

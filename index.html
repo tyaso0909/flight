@@ -75,6 +75,7 @@
     <button id="btnBoost" type="button" aria-label="ブースト(押している間加速)">ブースト</button>
   </div>
 
+  <div id="boostFx"></div>
   <div id="hitFx"></div>
   <div id="flash"></div>
 
@@ -82,7 +83,10 @@
   <section id="scrBase" class="panel" aria-labelledby="baseTitle">
     <header class="pn-head">
       <div class="pn-title"><p class="eyebrow">拠点</p><h1 id="baseTitle">出撃準備</h1></div>
-      <div id="baseNotice" class="pn-head-side"></div>
+      <div class="pn-head-side head-tools">
+        <div id="baseNotice"></div>
+        <button id="btnMute" class="chip-btn" type="button" aria-pressed="false">音 ON</button>
+      </div>
     </header>
     <div class="pn-body">
       <div class="cols">
@@ -245,6 +249,7 @@
       <div class="toggles">
         <label><input type="checkbox" id="invX"> 傾きの左右を反転</label>
         <label><input type="checkbox" id="invY"> 傾きの上下を反転</label>
+        <label><input type="checkbox" id="optMute"> 音を消す</label>
       </div>
       <p class="note">調整した値とセーブデータは、この端末のブラウザに保存されます。燃料・加速・燃料消費は強化前の基本値で、強化や船の種類による倍率がこれにかかります。</p>
     </div>
