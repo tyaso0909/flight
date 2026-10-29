@@ -1,7 +1,8 @@
 // 格納庫(強化・パーツ・造船)。左に船の3Dモデル、右にタブごとの一覧を出す
 import { $ } from './dom.js';
-import { TYPES, BLUEPRINT, UPGRADES, UPGRADE_COST, MAX_LV, SHIPS, SHIP_ORDER, PARTS, PART_CREW, CREW, WEIGHT_BURN, resShort } from './data.js';
-import { save, persist, shipStats, totalLv, ZERO_LV } from './save.js';
+import { BLUEPRINT, UPGRADES, UPGRADE_COST, MAX_LV, SHIPS, SHIP_ORDER, PARTS, PART_CREW, CREW, WEIGHT_BURN, resKey } from './data.js';
+import { toList, canPay, pay, costHtml, ownedResHtml } from './resui.js';
+import { save, persist, shipStats, totalLv, ZERO_LV, hasCrew } from './save.js';
 import { G } from './state.js';
 import { onShow, onHide, showScreen } from './ui.js';
 import { onLayout } from './orientation.js';
@@ -13,18 +14,13 @@ let preview = null;        // 造船タブで見ている船の種類
 
 const TABS = { up: ['tabUp', 'hgUpgrade'], parts: ['tabParts', 'hgParts'], build: ['tabBuild', 'hgBuild'] };
 
-const have = (k) => save.res[k] || 0;
-const toList = (obj) => Object.entries(obj || {}).map(([k, n]) => ({ k, n }));
+// 強化の費用(主・副の素材はレア度つき)
 const costList = (u, target) => {
   const c = UPGRADE_COST[target];
-  const list = [{ k: u.res[0], n: c.main }, { k: u.res[1], n: c.sub }];
+  const list = [{ k: resKey(u.res[0], c.main[0]), n: c.main[1] }, { k: resKey(u.res[1], c.sub[0]), n: c.sub[1] }];
   if (c.bp) list.push({ k: BLUEPRINT.key, n: c.bp });
   return list;
 };
-const canPay = (list) => list.every(c => have(c.k) >= c.n);
-const pay = (list) => list.forEach(c => { save.res[c.k] = have(c.k) - c.n; });
-const costHtml = (list) => list.map(c => `<span class="${have(c.k) < c.n ? 'short' : ''}">${resShort(c.k)} ${c.n}</span>`).join(' / ');
-const hasCrew = (key) => save.crew.some(c => c.key === key);
 const slotsOf = () => SHIPS[save.ship.kind].slots;
 
 // 最大耐久が変わる操作のあと、今の耐久を合わせる(増えた分は足し、減ったら上限に収める)
@@ -172,8 +168,7 @@ function renderBuild() {
 
 // ---------- 共通 ----------
 function renderRes() {
-  $('hgRes').innerHTML = TYPES.map(t => `<span>${t.res} <b>${have(t.key)}</b></span>`).join('')
-    + `<span>${BLUEPRINT.short} <b>${have(BLUEPRINT.key)}</b></span>`;
+  $('hgRes').innerHTML = ownedResHtml();
 }
 
 function showModel() {

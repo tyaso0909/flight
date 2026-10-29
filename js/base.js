@@ -1,13 +1,12 @@
 // 拠点(出撃準備・修理)と「数値の調整」画面
 import { $, clamp } from './dom.js';
-import { SETTINGS, TYPES, CREW, SHIPS, MAX_LV, UPGRADES } from './data.js';
+import { SETTINGS, TYPES, CREW, SHIPS, MAX_LV, UPGRADES, MAX_TIER, FULL_FIX_COST, resKey } from './data.js';
 import { cfg, save, persist, shipStats, maxHull, hullEffects, totalLv, resetSave } from './save.js';
 import { G } from './state.js';
 import { onShow, showScreen } from './ui.js';
 import { tilt, onFirstTilt } from './input.js';
 import { launch } from './flight.js';
 
-const FULL_FIX_COST = 20;   // 完全修理に使う資源の合計
 const QUICK_FIX_RATE = 0.3; // 応急修理で戻る耐久(最大耐久に対する割合)
 
 export function renderBase() {
@@ -23,8 +22,16 @@ export function renderBase() {
   if (fx.low40) chips.push('燃費悪化(耐久40%未満)');
   $('bChips').innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
 
-  $('resList').innerHTML = TYPES.map(t => `<li><span><span class="dot" style="background:${t.css}"></span>${t.res}<small style="color:var(--muted)">(${t.name})</small></span><b>${save.res[t.key] || 0}</b></li>`).join('')
-    + `<li><span><span class="dot" style="background:var(--amber)"></span>設計図のかけら<small style="color:var(--muted)">(遺跡)</small></span><b>${save.res.blueprint || 0}</b></li>`;
+  // 素材の表(行=星の属性、列=レア度)
+  const tiers = Array.from({ length: MAX_TIER }, (_, i) => i + 1);
+  $('resList').innerHTML = `<table class="res-grid">
+    <thead><tr><th scope="col"><span class="sr">星</span></th>${tiers.map(t => `<th scope="col" class="rt rt${t}">★${t}</th>`).join('')}</tr></thead>
+    <tbody>${TYPES.map(t => `<tr><th scope="row"><span class="dot" style="background:${t.css}"></span>${t.name}</th>${tiers.map(i => {
+      const n = save.res[resKey(t.key, i)] || 0;
+      return `<td class="${n ? '' : 'zero'}"><span class="rn">${t.items[i - 1]}</span><b>${n}</b></td>`;
+    }).join('')}</tr>`).join('')}</tbody>
+  </table>
+  <p class="bp-line"><span><span class="dot" style="background:var(--amber)"></span>設計図のかけら<small>(遺跡)</small></span><b>${save.res.blueprint || 0}</b></p>`;
   $('crewList').innerHTML = CREW.map(c => {
     const got = save.crew.find(s => s.key === c.key);
     return got
@@ -32,7 +39,7 @@ export function renderBase() {
       : `<li><span style="color:var(--muted)">${c.role}(未発見)<span class="crew-note">集落で出会えることがある</span></span><b>—</b></li>`;
   }).join('');
 
-  const total = TYPES.reduce((s, t) => s + (save.res[t.key] || 0), 0);
+  const total = TYPES.reduce((s, t) => s + (save.res[resKey(t.key, 1)] || 0), 0);
   const dead = save.hull <= 0;
   $('btnLaunch').disabled = dead;
   $('btnQuickFix').hidden = save.hull >= Math.ceil(mh * QUICK_FIX_RATE);
@@ -48,16 +55,17 @@ onFirstTilt(() => { if (G.mode === 'base') renderBase(); });
 
 $('btnLaunch').addEventListener('click', launch);
 $('btnHangar').addEventListener('click', () => { G.mode = 'hangar'; showScreen('hangar'); });
+$('btnWorkshop').addEventListener('click', () => { G.mode = 'workshop'; showScreen('workshop'); });
 
 // 応急修理(無料):出撃できる最低ラインまで戻す。ステータスダウンは残る
 $('btnQuickFix').addEventListener('click', () => {
   save.hull = Math.max(save.hull, Math.ceil(maxHull() * QUICK_FIX_RATE));
   persist(); renderBase();
 });
-// 完全修理:多く持っている資源から順に合計20使って、最大まで戻す
+// 完全修理:★1の素材を多く持っているものから順に合計20使って、最大まで戻す
 $('btnFullFix').addEventListener('click', () => {
   let cost = FULL_FIX_COST;
-  const byStock = TYPES.map(t => t.key).sort((a, b) => (save.res[b] || 0) - (save.res[a] || 0));
+  const byStock = TYPES.map(t => resKey(t.key, 1)).sort((a, b) => (save.res[b] || 0) - (save.res[a] || 0));
   for (const k of byStock) {
     const take = Math.min(cost, save.res[k] || 0);
     save.res[k] = (save.res[k] || 0) - take; cost -= take;

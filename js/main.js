@@ -6,6 +6,7 @@ import { showScreen } from './ui.js';
 import './explore.js';
 import './base.js';
 import './hangar.js';
+import './workshop.js';
 
 let last = performance.now();
 function frame(now) {

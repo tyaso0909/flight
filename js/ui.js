@@ -4,6 +4,7 @@ import { $ } from './dom.js';
 const SCREENS = {
   base: 'scrBase',
   hangar: 'scrHangar',
+  workshop: 'scrWorkshop',
   settings: 'scrSettings',
   explore: 'scrExplore',
   result: 'scrResult'

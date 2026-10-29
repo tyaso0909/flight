@@ -89,13 +89,14 @@
         <ul id="crewList" class="res-list"></ul>
       </div>
       <div>
-        <h2>持ち帰った資源</h2>
-        <ul id="resList" class="res-list"></ul>
+        <h2>持ち帰った素材</h2>
+        <div id="resList" class="res-wrap"></div>
         <div class="actions">
           <button id="btnLaunch" class="btn primary" type="button">出撃する</button>
           <button id="btnHangar" class="btn" type="button">格納庫(強化・パーツ・造船)</button>
+          <button id="btnWorkshop" class="btn" type="button">工房(探索装備)</button>
           <button id="btnQuickFix" class="btn" type="button" hidden>応急修理(無料)</button>
-          <button id="btnFullFix" class="btn" type="button" hidden>完全修理(資源20)</button>
+          <button id="btnFullFix" class="btn" type="button" hidden>完全修理(★1素材20)</button>
           <button id="btnSettings" class="btn" type="button">数値の調整</button>
         </div>
       </div>
@@ -131,6 +132,18 @@
     <div class="hg-foot">
       <div id="hgRes" class="hg-res"></div>
       <button id="btnHgBack" class="btn" type="button">拠点へ戻る</button>
+    </div>
+  </section>
+
+  <!-- 工房(探索装備) -->
+  <section id="scrWorkshop" class="panel workshop" hidden aria-labelledby="wsTitle">
+    <p class="eyebrow">工房</p>
+    <h1 id="wsTitle">探索装備</h1>
+    <p id="wsWho" class="note" style="margin:0 0 .6em"></p>
+    <div id="wsList" class="ws-list"></div>
+    <div class="hg-foot">
+      <div id="wsRes" class="hg-res"></div>
+      <button id="btnWsBack" class="btn" type="button">拠点へ戻る</button>
     </div>
   </section>
 

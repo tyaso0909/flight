@@ -278,4 +278,44 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .hg-res { font-family: var(--font-inst); font-size: 0.76em; color: var(--muted); display: flex; gap: 0.3em 0.9em; flex-wrap: wrap; min-width: 0; }
 .hg-res b { color: var(--text); font-weight: 400; }
 
+/* 素材のレア度(★1〜★5)の色 */
+.rt { font-family: var(--font-inst); font-size: 0.78em; font-style: normal; margin-left: 0.15em; letter-spacing: 0; }
+.rt1 { color: #a3abbb; }
+.rt2 { color: #7fe0a0; }
+.rt3 { color: #6fc3ff; }
+.rt4 { color: #c39bff; }
+.rt5 { color: #ffd166; }
+.btn.primary .rt { color: #5a3d0a; }
+.hg-res { max-height: 3.2em; overflow-y: auto; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* 拠点の素材の表 */
+.res-wrap { margin-bottom: 0.9em; overflow-x: auto; }
+.res-grid { width: 100%; border-collapse: collapse; font-size: 0.82em; table-layout: fixed; }
+.res-grid th, .res-grid td { padding: 0.25em 0.2em; border-bottom: 1px dashed var(--edge); text-align: center; }
+.res-grid thead th { font-weight: 700; border-bottom: 1px solid var(--edge); }
+.res-grid tbody th { text-align: left; font-weight: 400; white-space: nowrap; width: 5.2em; }
+.res-grid td .rn { display: block; font-size: 0.78em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res-grid td b { font-family: var(--font-inst); font-variant-numeric: tabular-nums; font-weight: 400; }
+.res-grid td.zero b { color: var(--edge); }
+.res-grid .dot { display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; margin-right: 0.4em; }
+.bp-line { display: flex; justify-content: space-between; margin: 0.5em 0 0; font-size: 0.9em; }
+.bp-line .dot { display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; margin-right: 0.5em; }
+.bp-line small { color: var(--muted); }
+.bp-line b { font-family: var(--font-inst); font-weight: 400; }
+
+/* 特殊エリア */
+.ex-node.special .ring { stroke: var(--ice); stroke-width: 2.5; }
+.ex-node.special .glyph { fill: var(--ice); }
+.ex-node.locked { opacity: 0.85; }
+.ex-node.locked .ring { stroke: var(--muted); stroke-dasharray: 3 3; }
+.ex-node.locked .glyph { fill: var(--muted); }
+.ex-node span small { display: block; font-size: 0.85em; color: var(--warn); }
+.ex-log li.special { border-color: var(--ice); }
+
+/* 工房 */
+.workshop { width: min(92%, 760px); }
+.ws-list { display: grid; }
+.ws-tag { font-size: 0.72em; padding: 0.05em 0.6em; border-radius: 999px; border: 1px solid var(--ice); color: var(--ice); }
+
 @media (prefers-reduced-motion: reduce) { #warn { animation: none; } }

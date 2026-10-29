@@ -1,9 +1,9 @@
 // 調整値とセーブデータ。この端末のブラウザ(localStorage)に保存する
-import { SETTINGS, UPGRADES, SHIPS, MAX_LV, PARTS, WEIGHT_BURN } from './data.js';
+import { SETTINGS, UPGRADES, SHIPS, MAX_LV, PARTS, GEAR, TYPES, RES, WEIGHT_BURN } from './data.js';
 
 const CFG_KEY = 'tiltflight.cfg';
 const SAVE_KEY = 'tiltflight.save';
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 
 export const cfg = { invX: false, invY: false };
 SETTINGS.forEach(s => { cfg[s.key] = s.def; });
@@ -17,6 +17,7 @@ export const save = {
   res: {},
   crew: [],
   parts: [],                                        // 作ったパーツ
+  gear: [],                                         // 作った探索装備
   ship: { kind: 'scout', lv: zeroLv(), parts: [] }  // parts = 今の船に付けているパーツ
 };
 
@@ -74,6 +75,7 @@ export function resetSave() {
   save.res = {};
   save.crew = [];
   save.parts = [];
+  save.gear = [];
   save.ship = { kind: 'scout', lv: zeroLv(), parts: [] };
   persist();
 }
@@ -81,7 +83,16 @@ export function resetSave() {
 // 古いセーブデータを今の形に直して読み込む
 function loadSave(s) {
   if (typeof s.hull === 'number') save.hull = s.hull;
-  if (s.res && typeof s.res === 'object') save.res = s.res;
+  if (s.res && typeof s.res === 'object') {
+    // v2までの素材(ice / lava など、レア度なし)は★1として引き継ぐ
+    const res = {};
+    for (const [k, n] of Object.entries(s.res)) {
+      if (typeof n !== 'number' || n <= 0) continue;
+      const key = TYPES.some(t => t.key === k) ? `${k}1` : k;
+      if (key === 'blueprint' || RES.some(r => r.key === key)) res[key] = (res[key] || 0) + Math.floor(n);
+    }
+    save.res = res;
+  }
   if (Array.isArray(s.crew)) save.crew = s.crew;
   // v1(船の情報なし)は、強化0の小型偵察機として引き継ぐ
   if (s.ship && SHIPS[s.ship.kind]) {
@@ -94,6 +105,7 @@ function loadSave(s) {
   // パーツ(この版から追加。知らないパーツと重複は捨てる)
   const valid = (arr) => Array.isArray(arr) ? [...new Set(arr.filter(k => PARTS.some(p => p.key === k)))] : [];
   save.parts = valid(s.parts);
+  save.gear = Array.isArray(s.gear) ? [...new Set(s.gear.filter(k => GEAR.some(g => g.key === k)))] : [];
   save.ship.parts = valid(s.ship && s.ship.parts).filter(k => save.parts.includes(k)).slice(0, SHIPS[save.ship.kind].slots);
   save.hull = Math.max(0, Math.min(maxHull(), Math.round(save.hull)));
 }
@@ -109,3 +121,6 @@ try {
   const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
   if (s) loadSave(s);
 } catch (e) { /* 保存なしで始める */ }
+
+export const hasGear = (key) => save.gear.includes(key);
+export const hasCrew = (key) => save.crew.some(c => c.key === key);
