@@ -1,6 +1,6 @@
-// 格納庫(強化・造船)。左に船の3Dモデル、右に強化の一覧または船の設計図を出す
+// 格納庫(強化・パーツ・造船)。左に船の3Dモデル、右にタブごとの一覧を出す
 import { $ } from './dom.js';
-import { TYPES, BLUEPRINT, UPGRADES, UPGRADE_COST, MAX_LV, SHIPS, SHIP_ORDER, resShort } from './data.js';
+import { TYPES, BLUEPRINT, UPGRADES, UPGRADE_COST, MAX_LV, SHIPS, SHIP_ORDER, PARTS, PART_CREW, CREW, WEIGHT_BURN, resShort } from './data.js';
 import { save, persist, shipStats, totalLv, ZERO_LV } from './save.js';
 import { G } from './state.js';
 import { onShow, onHide, showScreen } from './ui.js';
@@ -8,23 +8,39 @@ import { onLayout } from './orientation.js';
 import { ShipViewer } from './ships.js';
 
 let viewer = null;
-let tab = 'up';            // 'up' = 強化 / 'build' = 造船
+let tab = 'up';            // 'up' = 強化 / 'parts' = パーツ / 'build' = 造船
 let preview = null;        // 造船タブで見ている船の種類
 
+const TABS = { up: ['tabUp', 'hgUpgrade'], parts: ['tabParts', 'hgParts'], build: ['tabBuild', 'hgBuild'] };
+
 const have = (k) => save.res[k] || 0;
+const toList = (obj) => Object.entries(obj || {}).map(([k, n]) => ({ k, n }));
 const costList = (u, target) => {
   const c = UPGRADE_COST[target];
   const list = [{ k: u.res[0], n: c.main }, { k: u.res[1], n: c.sub }];
   if (c.bp) list.push({ k: BLUEPRINT.key, n: c.bp });
   return list;
 };
-const shipCost = (kind) => Object.entries(SHIPS[kind].cost || {}).map(([k, n]) => ({ k, n }));
 const canPay = (list) => list.every(c => have(c.k) >= c.n);
+const pay = (list) => list.forEach(c => { save.res[c.k] = have(c.k) - c.n; });
 const costHtml = (list) => list.map(c => `<span class="${have(c.k) < c.n ? 'short' : ''}">${resShort(c.k)} ${c.n}</span>`).join(' / ');
+const hasCrew = (key) => save.crew.some(c => c.key === key);
+const slotsOf = () => SHIPS[save.ship.kind].slots;
 
-// 強化の効果を「今 → 次」で見せる
+// 最大耐久が変わる操作のあと、今の耐久を合わせる(増えた分は足し、減ったら上限に収める)
+function withHullAdjust(fn) {
+  const oldMax = shipStats().maxHull;
+  fn();
+  const newMax = shipStats().maxHull;
+  if (newMax > oldMax) save.hull += newMax - oldMax;
+  save.hull = Math.min(save.hull, newMax);
+}
+
+// ---------- 強化 ----------
+// 強化の効果を「今 → 次」で見せる(付けているパーツ込み)
 function effectText(key, kind, lvNow, lvNext) {
-  const a = shipStats(kind, lvNow), b = lvNext ? shipStats(kind, lvNext) : null;
+  const parts = save.ship.parts;
+  const a = shipStats(kind, lvNow, parts), b = lvNext ? shipStats(kind, lvNext, parts) : null;
   const f = {
     tank: (s) => `${s.fuel}`,
     engine: (s) => `${Math.round(s.accel)}`,
@@ -57,26 +73,104 @@ function renderUpgrade() {
   }).join('');
 }
 
+function buy(key) {
+  const u = UPGRADES.find(x => x.key === key);
+  const cur = save.ship.lv[key];
+  if (cur >= MAX_LV) return;
+  const list = costList(u, cur + 1);
+  if (!canPay(list)) return;
+  withHullAdjust(() => { pay(list); save.ship.lv[key] = cur + 1; });
+  persist();
+  render();
+  if (viewer) viewer.pulse();
+}
+
+// ---------- パーツ ----------
+function renderParts() {
+  const eq = save.ship.parts, slots = slotsOf();
+  const st = shipStats();
+  const weightPct = Math.round(WEIGHT_BURN * st.weight * 100);
+  const head = `<div class="pt-head">
+    <span>パーツ枠 <b>${eq.length} / ${slots}</b></span>
+    <span>重さ <b>${st.weight}</b> → 燃料消費 <b>+${weightPct}%</b></span>
+  </div>`;
+  const groups = Object.keys(PART_CREW).map(crewKey => {
+    const c = CREW.find(x => x.key === crewKey);
+    const unlocked = hasCrew(crewKey);
+    const rows = PARTS.filter(p => p.crew === crewKey).map(p => {
+      const owned = save.parts.includes(p.key), on = eq.includes(p.key);
+      const list = toList(p.cost);
+      let btn;
+      if (!unlocked) btn = `<span class="sh-state">${c.role}が必要</span>`;
+      else if (!owned) {
+        const ok = canPay(list);
+        btn = `<button class="btn up-buy${ok ? ' primary' : ''}" type="button" data-make="${p.key}"${ok ? '' : ' disabled'}>製作<span class="cost">${costHtml(list)}</span></button>`;
+      } else if (on) btn = `<button class="btn up-buy on" type="button" data-unequip="${p.key}">外す<span class="cost">装着中</span></button>`;
+      else {
+        const full = eq.length >= slots;
+        btn = `<button class="btn up-buy" type="button" data-equip="${p.key}"${full ? ' disabled' : ''}>装着<span class="cost">${full ? '枠がいっぱい' : '作成済み'}</span></button>`;
+      }
+      const w = p.weight > 0 ? `+${p.weight}` : `${p.weight}`;
+      return `<div class="up-row${on ? ' equipped' : ''}">
+        <div>
+          <div class="up-title"><b>${p.name}</b><span class="lv">重さ ${w}</span></div>
+          <div class="up-eff">${p.desc}</div>
+        </div>
+        ${btn}
+      </div>`;
+    }).join('');
+    const title = unlocked ? `${c.role} ${c.name} の${PART_CREW[crewKey]}パーツ` : `${PART_CREW[crewKey]}パーツ(${c.role}が仲間になると作れる)`;
+    return `<h3 class="pt-group">${title}</h3>${rows}`;
+  }).join('');
+  $('hgParts').innerHTML = head + groups;
+}
+
+function make(key) {
+  const p = PARTS.find(x => x.key === key);
+  if (!p || save.parts.includes(key) || !hasCrew(p.crew)) return;
+  const list = toList(p.cost);
+  if (!canPay(list)) return;
+  pay(list);
+  save.parts.push(key);
+  persist();
+  render();
+}
+function equip(key, on) {
+  const eq = save.ship.parts;
+  if (on) {
+    if (!save.parts.includes(key) || eq.includes(key) || eq.length >= slotsOf()) return;
+    withHullAdjust(() => eq.push(key));
+  } else {
+    if (!eq.includes(key)) return;
+    withHullAdjust(() => eq.splice(eq.indexOf(key), 1));
+  }
+  persist();
+  render();
+  if (viewer) viewer.pulse();
+}
+
+// ---------- 造船 ----------
 function renderBuild() {
-  const hasWright = save.crew.some(c => c.key === 'shipwright');
+  const hasWright = hasCrew('shipwright');
   $('hgBuild').innerHTML = SHIP_ORDER.map(kind => {
     const sh = SHIPS[kind], st = shipStats(kind, ZERO_LV), own = kind === save.ship.kind;
     const state = own ? '<span class="sh-state own">使用中</span>'
       : !hasWright ? '<span class="sh-state">造船士が必要</span>'
       : '<span class="sh-state">建造は次の段階で実装</span>';
-    const cost = sh.cost ? `<div class="sh-cost">建造:${costHtml(shipCost(kind))}</div>` : '';
+    const cost = sh.cost ? `<div class="sh-cost">建造:${costHtml(toList(sh.cost))}</div>` : '';
     return `<button type="button" class="sh-row" data-ship="${kind}" aria-pressed="${kind === preview}">
       <div>
         <b>${sh.name}</b>
         <div class="sh-desc">${sh.desc}</div>
-        <div class="sh-stats"><span>燃料 <b>${st.fuel}</b></span><span>加速 <b>${Math.round(st.accel)}</b></span><span>消費 <b>${st.burn.toFixed(1)}</b></span><span>旋回 <b>${Math.round(st.steer * 100)}%</b></span><span>耐久 <b>${st.maxHull}</b></span></div>
+        <div class="sh-stats"><span>燃料 <b>${st.fuel}</b></span><span>加速 <b>${Math.round(st.accel)}</b></span><span>消費 <b>${st.burn.toFixed(1)}</b></span><span>旋回 <b>${Math.round(st.steer * 100)}%</b></span><span>耐久 <b>${st.maxHull}</b></span><span>パーツ枠 <b>${sh.slots}</b></span></div>
         ${cost}
       </div>
       ${state}
     </button>`;
-  }).join('') + '<p class="sh-note">数値は強化前(Lv0)のものです。船を選ぶと左にモデルが表示されます。建造と船の乗り換えは、NPC派遣と一緒に次の段階で作ります。</p>';
+  }).join('') + '<p class="sh-note">数値は強化前(Lv0)・パーツなしのものです。船を選ぶと左にモデルが表示されます。建造と船の乗り換えは、NPC派遣と一緒に次の段階で作ります。</p>';
 }
 
+// ---------- 共通 ----------
 function renderRes() {
   $('hgRes').innerHTML = TYPES.map(t => `<span>${t.res} <b>${have(t.key)}</b></span>`).join('')
     + `<span>${BLUEPRINT.short} <b>${have(BLUEPRINT.key)}</b></span>`;
@@ -84,48 +178,43 @@ function renderRes() {
 
 function showModel() {
   if (!viewer) return;
-  if (tab === 'up') {
-    viewer.setShip(save.ship.kind, save.ship.lv);
-    $('hgBadge').textContent = `強化 Lv ${totalLv()} / ${UPGRADES.length * MAX_LV}`;
+  if (tab !== 'build') {
+    viewer.setShip(save.ship.kind, save.ship.lv, save.ship.parts);
+    $('hgBadge').textContent = tab === 'up'
+      ? `強化 Lv ${totalLv()} / ${UPGRADES.length * MAX_LV}`
+      : `パーツ ${save.ship.parts.length} / ${slotsOf()}`;
     $('hgTitle').textContent = SHIPS[save.ship.kind].name;
   } else {
     const own = preview === save.ship.kind;
-    viewer.setShip(preview, own ? save.ship.lv : ZERO_LV);
+    viewer.setShip(preview, own ? save.ship.lv : ZERO_LV, own ? save.ship.parts : []);
     $('hgBadge').textContent = own ? '使用中の船' : '設計図';
     $('hgTitle').textContent = SHIPS[preview].name;
   }
 }
 
 function render() {
-  const up = tab === 'up';
-  $('tabUp').setAttribute('aria-selected', String(up));
-  $('tabBuild').setAttribute('aria-selected', String(!up));
-  $('hgUpgrade').hidden = !up;
-  $('hgBuild').hidden = up;
-  if (up) renderUpgrade(); else renderBuild();
+  for (const k in TABS) {
+    const [btn, panel] = TABS[k];
+    $(btn).setAttribute('aria-selected', String(k === tab));
+    $(panel).hidden = k !== tab;
+  }
+  if (tab === 'up') renderUpgrade();
+  else if (tab === 'parts') renderParts();
+  else renderBuild();
   renderRes();
   showModel();
-}
-
-function buy(key) {
-  const u = UPGRADES.find(x => x.key === key);
-  const cur = save.ship.lv[key];
-  if (cur >= MAX_LV) return;
-  const list = costList(u, cur + 1);
-  if (!canPay(list)) return;
-  const oldMax = shipStats().maxHull;
-  list.forEach(c => { save.res[c.k] = have(c.k) - c.n; });
-  save.ship.lv[key] = cur + 1;
-  // 装甲を強化したら、増えた分だけ今の耐久も増やす
-  if (key === 'armor') save.hull += shipStats().maxHull - oldMax;
-  persist();
-  render();
-  if (viewer) viewer.pulse();
 }
 
 $('hgUpgrade').addEventListener('click', (e) => {
   const b = e.target.closest('[data-up]');
   if (b && !b.disabled) buy(b.dataset.up);
+});
+$('hgParts').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b || b.disabled) return;
+  if (b.dataset.make) make(b.dataset.make);
+  else if (b.dataset.equip) equip(b.dataset.equip, true);
+  else if (b.dataset.unequip) equip(b.dataset.unequip, false);
 });
 $('hgBuild').addEventListener('click', (e) => {
   const b = e.target.closest('[data-ship]');
@@ -135,6 +224,7 @@ $('hgBuild').addEventListener('click', (e) => {
 });
 const switchTab = (t) => { if (tab === t) return; tab = t; document.querySelector('.hg-side').scrollTop = 0; render(); };
 $('tabUp').addEventListener('click', () => switchTab('up'));
+$('tabParts').addEventListener('click', () => switchTab('parts'));
 $('tabBuild').addEventListener('click', () => switchTab('build'));
 $('btnHgBack').addEventListener('click', () => { G.mode = 'base'; showScreen('base'); });
 

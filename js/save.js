@@ -1,5 +1,5 @@
 // 調整値とセーブデータ。この端末のブラウザ(localStorage)に保存する
-import { SETTINGS, UPGRADES, SHIPS, MAX_LV } from './data.js';
+import { SETTINGS, UPGRADES, SHIPS, MAX_LV, PARTS, WEIGHT_BURN } from './data.js';
 
 const CFG_KEY = 'tiltflight.cfg';
 const SAVE_KEY = 'tiltflight.save';
@@ -16,22 +16,41 @@ export const save = {
   hull: SHIPS.scout.base.hull,
   res: {},
   crew: [],
-  ship: { kind: 'scout', lv: zeroLv() }
+  parts: [],                                        // 作ったパーツ
+  ship: { kind: 'scout', lv: zeroLv(), parts: [] }  // parts = 今の船に付けているパーツ
 };
 
-// 船の性能(調整値 × 船の種類 × 強化の倍率)
-export function shipStats(kind = save.ship.kind, lv = save.ship.lv) {
+// パーツの重さの合計(0未満にはならない)
+export const partsWeight = (parts) => Math.max(0, parts.reduce((s, k) => s + PARTS.find(p => p.key === k).weight, 0));
+
+// 船の性能(調整値 × 船の種類 × 強化の倍率 + パーツ)
+// 引数を省くと今の船(付けているパーツ込み)。kind と lv を渡したときはパーツなしで計算する
+export function shipStats(kind = save.ship.kind, lv = save.ship.lv, parts = (kind === save.ship.kind && lv === save.ship.lv) ? save.ship.parts : []) {
   const b = SHIPS[kind].base;
   const m = (key) => UPGRADES.find(u => u.key === key).mult[lv[key] || 0];
+  const has = (k) => parts.includes(k);
+  const weight = partsWeight(parts);
   return {
-    fuel: Math.round(cfg.fuel * b.tank * m('tank')),
-    accel: cfg.accel * b.accel * m('engine'),
-    burn: cfg.burn * b.burn * m('eff'),
+    fuel: Math.round(cfg.fuel * b.tank * m('tank')) + (has('subtank') ? 30 : 0),
+    accel: cfg.accel * b.accel * m('engine') * (has('afterburner') ? 1.2 : 1),
+    burn: cfg.burn * b.burn * m('eff') * (1 + WEIGHT_BURN * weight),
     steer: b.steer * m('gyro'),
-    maxHull: Math.round(b.hull * m('armor'))
+    maxHull: Math.round(b.hull * m('armor')) + (has('frame') ? 25 : 0),
+    weight
   };
 }
 export const maxHull = () => shipStats().maxHull;
+
+// 数値以外のパーツの効果
+export function partFx(parts = save.ship.parts) {
+  const has = (k) => parts.includes(k);
+  return {
+    drag: has('damper') ? 0.75 : 1,       // ブーストしていないときの減速
+    hitKeep: has('absorber') ? 0.89 : 0.78, // デブリに当たったあとに残る速度の割合
+    crash: has('gear') ? 0.5 : 1,         // 不時着のダメージ
+    dangerSafe: has('heatshield')         // 危険地帯で傷つかない
+  };
+}
 export const totalLv = (lv = save.ship.lv) => UPGRADES.reduce((s, u) => s + (lv[u.key] || 0), 0);
 
 // 耐久が減ったときのステータスダウン(最大耐久に対する割合で判定)
@@ -54,7 +73,8 @@ export function resetSave() {
   save.hull = SHIPS.scout.base.hull;
   save.res = {};
   save.crew = [];
-  save.ship = { kind: 'scout', lv: zeroLv() };
+  save.parts = [];
+  save.ship = { kind: 'scout', lv: zeroLv(), parts: [] };
   persist();
 }
 
@@ -71,6 +91,10 @@ function loadSave(s) {
       if (Number.isInteger(v)) save.ship.lv[u.key] = Math.max(0, Math.min(MAX_LV, v));
     });
   }
+  // パーツ(この版から追加。知らないパーツと重複は捨てる)
+  const valid = (arr) => Array.isArray(arr) ? [...new Set(arr.filter(k => PARTS.some(p => p.key === k)))] : [];
+  save.parts = valid(s.parts);
+  save.ship.parts = valid(s.ship && s.ship.parts).filter(k => save.parts.includes(k)).slice(0, SHIPS[save.ship.kind].slots);
   save.hull = Math.max(0, Math.min(maxHull(), Math.round(save.hull)));
 }
 

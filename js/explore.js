@@ -1,7 +1,7 @@
 // 着陸後の探索(星の地図から探索地点を選ぶ)
 import { $, rnd, stars } from './dom.js';
 import { KINDS, CREW, resName } from './data.js';
-import { save, persist } from './save.js';
+import { save, persist, partFx } from './save.js';
 import { G } from './state.js';
 import { showScreen } from './ui.js';
 import { scene, world, clearWorld, resetCamera } from './world.js';
@@ -18,7 +18,7 @@ function addRes(key, n) {
 // 着陸演出のあとに呼ばれる
 export function beginExplore(p, crash, run) {
   const hullBefore = save.hull;
-  if (crash) save.hull = Math.max(0, save.hull - CRASH_DAMAGE);
+  if (crash) save.hull = Math.max(0, save.hull - Math.round(CRASH_DAMAGE * partFx().crash));
   persist();
   // 着陸した星だけ残し、探索画面の背景に見せる
   world.planets.filter(q => q !== p).forEach(q => scene.remove(q.group));
@@ -83,7 +83,10 @@ function explore(node) {
     const n = Math.round(rnd(14, 22) * m);
     addRes(k, n);
     text = `${p.type.res} ×${n}`;
-    if (Math.random() < 0.45) {
+    const rockfall = Math.random() < 0.45;
+    if (rockfall && partFx().dangerSafe) {
+      text += '。落石があったが、耐熱シールドで無傷';
+    } else if (rockfall) {
       const before = save.hull;
       save.hull = Math.max(0, save.hull - DANGER_DAMAGE);
       text += `。落石で耐久 ${before} → ${save.hull}`;

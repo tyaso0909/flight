@@ -40,8 +40,8 @@ export const KINDS = {
 // 仲間
 export const CREW = [
   { key: 'miner', role: '採掘士', name: 'ドゥーラ', note: '鉱脈で手に入る資源が1.3倍' },
-  { key: 'engineer', role: '技師', name: 'ミロ', note: '推進系パーツの製作(未実装)' },
-  { key: 'armor', role: '装甲職人', name: 'ハッカ', note: '防御系パーツの製作(未実装)' },
+  { key: 'engineer', role: '技師', name: 'ミロ', note: '推進系パーツを作れる(格納庫)' },
+  { key: 'armor', role: '装甲職人', name: 'ハッカ', note: '防御系パーツを作れる(格納庫)' },
   { key: 'shipwright', role: '造船士', name: 'セナ', note: '新しい船の建造(未実装)' },
   { key: 'navigator', role: '航法士', name: 'ルオ', note: '星図の拡張(未実装)' }
 ];
@@ -64,18 +64,32 @@ export const UPGRADE_COST = [null,
   { main: 80, sub: 35, bp: 2 }
 ];
 
-// 船の種類。base は小型偵察機を1とした倍率(hull だけは最大耐久の値)
+// パーツ(仲間が作れるようにする)。重さの合計1につき燃料消費が WEIGHT_BURN 増える
+export const WEIGHT_BURN = 0.05;
+export const PART_CREW = { engineer: '推進系', armor: '防御系' };
+export const PARTS = [
+  { key: 'subtank', crew: 'engineer', name: '予備燃料タンク', desc: '燃料 +30', weight: 2, cost: { gas: 25, machine: 10 } },
+  { key: 'afterburner', crew: 'engineer', name: 'アフターバーナー', desc: 'ブーストの加速 +20%', weight: 2, cost: { lava: 25, machine: 10 } },
+  { key: 'damper', crew: 'engineer', name: '慣性ダンパー', desc: 'ブーストしていないときの減速 -25%', weight: 1, cost: { ice: 20, gas: 15 } },
+  { key: 'lightkit', crew: 'engineer', name: '軽量化キット', desc: '重さ -3(他のパーツの重さを打ち消す)', weight: -3, cost: { forest: 30, gas: 10, blueprint: 1 } },
+  { key: 'absorber', crew: 'armor', name: '衝撃吸収材', desc: 'デブリに当たったときの減速が半分', weight: 1, cost: { forest: 25, ice: 10 } },
+  { key: 'frame', crew: 'armor', name: '補強フレーム', desc: '最大耐久 +25', weight: 3, cost: { machine: 30, lava: 10 } },
+  { key: 'gear', crew: 'armor', name: '着陸ギア', desc: '不時着のダメージが半分', weight: 2, cost: { machine: 20, forest: 15 } },
+  { key: 'heatshield', crew: 'armor', name: '耐熱シールド', desc: '危険地帯で機体が傷つかない', weight: 2, cost: { lava: 20, ice: 15, blueprint: 1 } }
+];
+
+// 船の種類。base は小型偵察機を1とした倍率(hull だけは最大耐久の値)。slots はパーツ枠の数
 export const SHIPS = {
   scout: {
-    name: '小型偵察機', desc: '初期機体。軽くて曲がりやすい',
+    name: '小型偵察機', desc: '初期機体。軽くて曲がりやすい', slots: 3,
     base: { tank: 1, accel: 1, burn: 1, steer: 1, hull: 100 }, cost: null
   },
   hauler: {
-    name: '輸送船', desc: '頑丈で耐久が高い。重く、曲がりにくい',
+    name: '輸送船', desc: '頑丈で耐久が高い。重く、曲がりにくい', slots: 4,
     base: { tank: 1.1, accel: 0.85, burn: 1.15, steer: 0.8, hull: 150 }, cost: { machine: 60, ice: 30, blueprint: 2 }
   },
   explorer: {
-    name: '長距離探査船', desc: '大きな燃料タンクで遠くまで行ける',
+    name: '長距離探査船', desc: '大きな燃料タンクで遠くまで行ける', slots: 3,
     base: { tank: 1.5, accel: 0.95, burn: 0.9, steer: 0.85, hull: 90 }, cost: { gas: 60, lava: 30, blueprint: 3 }
   }
 };

@@ -269,6 +269,11 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .sh-state { font-size: 0.76em; padding: 0.15em 0.7em; border-radius: 999px; border: 1px solid var(--edge); color: var(--muted); white-space: nowrap; }
 .sh-state.own { border-color: var(--ok); color: var(--ok); }
 .sh-note { color: var(--muted); font-size: 0.78em; line-height: 1.6; margin: 0.6em 0 0; }
+.pt-head { display: flex; justify-content: space-between; gap: 0.4em 1em; flex-wrap: wrap; font-size: 0.85em; color: var(--muted); padding: 0.45em 0.7em; border: 1px solid var(--edge); border-radius: 6px; margin-bottom: 0.4em; }
+.pt-head b { color: var(--amber); font-family: var(--font-inst); font-weight: 400; }
+.pt-group { font-size: 0.8em; color: var(--muted); font-weight: 400; letter-spacing: 0.04em; margin: 0.9em 0 0.1em; }
+.up-row.equipped b { color: var(--ok); }
+.btn.up-buy.on { border-color: var(--ok); color: var(--ok); }
 .hg-foot { display: flex; justify-content: space-between; align-items: center; gap: 0.8em; flex-wrap: wrap; margin-top: 0.8em; }
 .hg-res { font-family: var(--font-inst); font-size: 0.76em; color: var(--muted); display: flex; gap: 0.3em 0.9em; flex-wrap: wrap; min-width: 0; }
 .hg-res b { color: var(--text); font-weight: 400; }

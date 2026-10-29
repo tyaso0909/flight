@@ -1,6 +1,7 @@
 // 船の3Dモデル(3種類)と、格納庫で船を表示するビューア
 // モデルは強化の段階で見た目が変わる:燃料タンク=外付けタンク、エンジン=ノズルの大きさと光、
 // 燃費=吸気口、姿勢制御=小型スラスター、装甲=装甲板
+// 付けたパーツも一部は見た目に出る:予備燃料タンク、アフターバーナー、補強フレーム、着陸ギア、耐熱シールド
 import { clamp } from './dom.js';
 import { toLocalDelta } from './orientation.js';
 
@@ -12,7 +13,9 @@ const M = {
   accent: new THREE.MeshStandardMaterial({ color: 0xffb84d, roughness: 0.5, metalness: 0.2, flatShading: true }),
   glass: new THREE.MeshStandardMaterial({ color: 0x1b3a52, roughness: 0.15, metalness: 0.6, emissive: 0x0d3550, emissiveIntensity: 0.8 }),
   tank: new THREE.MeshStandardMaterial({ color: 0x9fb7d6, roughness: 0.45, metalness: 0.5, flatShading: true }),
-  plate: new THREE.MeshStandardMaterial({ color: 0x5b6573, roughness: 0.7, metalness: 0.4, flatShading: true })
+  plate: new THREE.MeshStandardMaterial({ color: 0x5b6573, roughness: 0.7, metalness: 0.4, flatShading: true }),
+  heat: new THREE.MeshStandardMaterial({ color: 0x6b2a1c, roughness: 0.85, metalness: 0.2, emissive: 0x2a0a04, flatShading: true }),
+  burner: new THREE.MeshBasicMaterial({ color: 0xff7a3a })
 };
 const thinMat = M.hull.clone();
 thinMat.side = THREE.DoubleSide;
@@ -94,6 +97,23 @@ function applyUpgrades(g, slots, lv) {
   slots.engines.forEach(e => addNozzle(g, e, lv.engine));
 }
 
+// パーツの見た目
+function applyParts(g, slots, parts) {
+  const has = (k) => parts.includes(k);
+  if (has('subtank')) slots.extraTank.forEach(t => addTank(g, t, 0));
+  if (has('afterburner')) slots.engines.forEach(e => part(g, new THREE.TorusGeometry(e.r * 1.2, 0.04, 6, 24), M.burner, [e.x, e.y, e.z + 0.3]));
+  if (has('frame')) slots.rails.forEach(a => part(g, box(a.w, a.h, a.d), M.dark, [a.x, a.y, a.z]));
+  if (has('gear')) slots.legs.forEach(a => {
+    part(g, box(0.06, 0.3, 0.06), M.dark, [a.x, a.y, a.z]);
+    part(g, box(0.2, 0.03, 0.2), M.dark, [a.x, a.y - 0.16, a.z]);
+  });
+  if (has('heatshield')) {
+    const sh = slots.shield;
+    if (sh.cone) part(g, coneFwd(sh.r, sh.len, 12), M.heat, [sh.x, sh.y, sh.z]);
+    else part(g, box(sh.w, sh.h, sh.d), M.heat, [sh.x, sh.y, sh.z]);
+  }
+}
+
 // ---------- 船の形 ----------
 function scout(g) {
   part(g, cylZ(0.36, 0.5, 2.4, 10), M.hull, [0, 0, 0.1]);
@@ -117,7 +137,11 @@ function scout(g) {
       sym(0.36, 0.3, 1.2, { w: 0.05, h: 0.2, d: 0.32 })
     ],
     rcs: [sym(1.56, 0.08, 1.0), sym(0.3, 0.06, -1.45), sym(0.5, 0.36, 1.25)],
-    intakes: [sym(0.5, -0.18, -0.35), sym(0.44, -0.3, 0.85)]
+    intakes: [sym(0.5, -0.18, -0.35), sym(0.44, -0.3, 0.85)],
+    extraTank: sym(0.78, -0.2, 0.5, { len: 0.75, r: 0.1 }),
+    rails: sym(0.53, -0.14, 0.35, { w: 0.04, h: 0.06, d: 1.8 }),
+    legs: [{ x: 0, y: -0.62, z: -0.9 }, ...sym(0.55, -0.35, 0.75)],
+    shield: { cone: true, x: 0, y: 0, z: -1.78, r: 0.4, len: 0.55 }
   };
 }
 
@@ -144,7 +168,11 @@ function hauler(g) {
       [{ x: 0, y: -0.525, z: 0.2, w: 1.2, h: 0.05, d: 1.8 }]
     ],
     rcs: [sym(0.78, 0.55, -0.95), sym(0.78, 0.55, 1.4), sym(1.0, 0.36, 1.2)],
-    intakes: [sym(0.6, -0.58, -0.7), sym(0.6, -0.58, 0.9)]
+    intakes: [sym(0.6, -0.58, -0.7), sym(0.6, -0.58, 0.9)],
+    extraTank: sym(1.0, -0.6, 0.35, { len: 1.3, r: 0.13 }),
+    rails: sym(0.7, 0.53, 0.2, { w: 0.06, h: 0.05, d: 2.4 }),
+    legs: [...sym(0.6, -0.68, -0.7), ...sym(0.6, -0.68, 1.1)],
+    shield: { x: 0, y: -0.12, z: -1.8, w: 1.0, h: 0.14, d: 0.08 }
   };
 }
 
@@ -173,17 +201,22 @@ function explorer(g) {
       [{ x: 0, y: 0.5, z: 2.1, w: 0.4, h: 0.05, d: 0.4 }]
     ],
     rcs: [sym(1.1, 0, 0.35), [{ x: 0, y: 1.1, z: 0.35 }, { x: 0, y: -1.1, z: 0.35 }], sym(0.5, 0.1, -1.95)],
-    intakes: [sym(0.26, -0.18, 1.75), [{ x: 0, y: 0.3, z: 1.75 }, { x: 0, y: -0.3, z: 1.75 }]]
+    intakes: [sym(0.26, -0.18, 1.75), [{ x: 0, y: 0.3, z: 1.75 }, { x: 0, y: -0.3, z: 1.75 }]],
+    extraTank: [{ x: 0, y: 0.5, z: 1.4, len: 0.8, r: 0.13 }],
+    rails: sym(0.2, 0.12, 0.15, { w: 0.04, h: 0.04, d: 3.0 }),
+    legs: [{ x: 0, y: -0.6, z: -1.6 }, ...sym(0.45, -0.82, 0.35)],
+    shield: { x: 0, y: -0.05, z: -2.42, w: 0.62, h: 0.5, d: 0.06 }
   };
 }
 
 const BUILDERS = { scout, hauler, explorer };
 
-// 船のモデルを作る。lv は { tank, engine, eff, gyro, armor } の段階(0〜5)
-export function buildShip(kind, lv) {
+// 船のモデルを作る。lv は { tank, engine, eff, gyro, armor } の段階(0〜5)、parts は付けているパーツ
+export function buildShip(kind, lv, parts = []) {
   const g = new THREE.Group();
   const slots = BUILDERS[kind](g);
   applyUpgrades(g, slots, lv);
+  applyParts(g, slots, parts);
   return g;
 }
 
@@ -245,12 +278,12 @@ export class ShipViewer {
     canvas.addEventListener('pointercancel', end);
   }
 
-  setShip(kind, lv) {
+  setShip(kind, lv, parts = []) {
     while (this.holder.children.length) {
       const c = this.holder.children.pop();
       disposeTree(c);
     }
-    const ship = buildShip(kind, lv);
+    const ship = buildShip(kind, lv, parts);
     const bb = new THREE.Box3().setFromObject(ship);
     const size = bb.getSize(new THREE.Vector3()), center = bb.getCenter(new THREE.Vector3());
     const s = 3.0 / Math.max(size.x, size.y, size.z);

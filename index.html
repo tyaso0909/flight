@@ -93,7 +93,7 @@
         <ul id="resList" class="res-list"></ul>
         <div class="actions">
           <button id="btnLaunch" class="btn primary" type="button">出撃する</button>
-          <button id="btnHangar" class="btn" type="button">格納庫(強化・造船)</button>
+          <button id="btnHangar" class="btn" type="button">格納庫(強化・パーツ・造船)</button>
           <button id="btnQuickFix" class="btn" type="button" hidden>応急修理(無料)</button>
           <button id="btnFullFix" class="btn" type="button" hidden>完全修理(資源20)</button>
           <button id="btnSettings" class="btn" type="button">数値の調整</button>
@@ -112,6 +112,7 @@
       </div>
       <div class="tabs" role="tablist" aria-label="格納庫の画面">
         <button id="tabUp" type="button" role="tab" aria-selected="true" aria-controls="hgUpgrade">強化</button>
+        <button id="tabParts" type="button" role="tab" aria-selected="false" aria-controls="hgParts">パーツ</button>
         <button id="tabBuild" type="button" role="tab" aria-selected="false" aria-controls="hgBuild">造船</button>
       </div>
     </div>
@@ -123,6 +124,7 @@
       </div>
       <div class="hg-side">
         <div id="hgUpgrade" role="tabpanel" aria-labelledby="tabUp"></div>
+        <div id="hgParts" role="tabpanel" aria-labelledby="tabParts" hidden></div>
         <div id="hgBuild" role="tabpanel" aria-labelledby="tabBuild" hidden></div>
       </div>
     </div>

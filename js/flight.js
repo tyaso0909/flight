@@ -1,7 +1,7 @@
 // 飛行パート(操縦・ブースト・引力・デブリ・着陸演出・計器盤)
 import { $, clamp, stars } from './dom.js';
 import { V_MIN, V_START, V_MAX } from './data.js';
-import { cfg, save, shipStats, hullEffects, maxHull } from './save.js';
+import { cfg, save, shipStats, hullEffects, maxHull, partFx } from './save.js';
 import { G } from './state.js';
 import { showScreen } from './ui.js';
 import { view, layout, tryLandscape } from './orientation.js';
@@ -18,7 +18,7 @@ export function resetRun() {
   clearWorld();
   const st = shipStats();
   Object.assign(G.run, {
-    st, v: V_START, fuel: st.fuel, maxFuel: st.fuel, dist: 0, px: 0, py: 0, vx: 0, vy: 0, pull: 0, active: null,
+    st, fx: partFx(), v: V_START, fuel: st.fuel, maxFuel: st.fuel, dist: 0, px: 0, py: 0, vx: 0, vy: 0, pull: 0, active: null,
     nextPlanet: 500, debrisT: 1.2, shake: 0, hitFx: 0
   });
 }
@@ -61,7 +61,7 @@ export function updateFlying(dt) {
     run.v += run.st.accel * dt;
     run.fuel = Math.max(0, run.fuel - run.st.burn * fx.burn * dt);
   } else {
-    run.v -= cfg.drag * dt;
+    run.v -= cfg.drag * run.fx.drag * dt;
   }
   run.v = clamp(run.v, V_MIN, V_MAX);
   boostButton.classList.toggle('on', boosting);
@@ -91,7 +91,7 @@ export function updateFlying(dt) {
     d.mesh.rotation.x += d.rx * dt; d.mesh.rotation.y += d.ry * dt;
     // デブリに当たると減速する
     if (prev < 0 && d.z >= 0 && Math.hypot(d.x - run.px, d.y - run.py) < d.r + 4) {
-      run.v = Math.max(V_MIN, run.v * 0.78);
+      run.v = Math.max(V_MIN, run.v * run.fx.hitKeep);
       run.shake = 0.4; run.hitFx = 1;
       scene.remove(d.mesh); debris.splice(i, 1);
       continue;

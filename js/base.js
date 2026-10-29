@@ -13,7 +13,7 @@ const QUICK_FIX_RATE = 0.3; // 応急修理で戻る耐久(最大耐久に対す
 export function renderBase() {
   const st = shipStats(), mh = st.maxHull;
   $('bShipName').textContent = SHIPS[save.ship.kind].name;
-  $('bShipSub').textContent = `強化 Lv ${totalLv()} / ${UPGRADES.length * MAX_LV}`;
+  $('bShipSub').textContent = `強化 Lv ${totalLv()} / ${UPGRADES.length * MAX_LV} ・ パーツ ${save.ship.parts.length} / ${SHIPS[save.ship.kind].slots}`;
   $('bFuel').textContent = st.fuel;
   $('bFuelBar').style.width = clamp(st.fuel / 300 * 100, 0, 100) + '%';
   $('bHull').textContent = `${save.hull} / ${mh}`;
