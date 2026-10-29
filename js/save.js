@@ -11,6 +11,11 @@ SETTINGS.forEach(s => { cfg[s.key] = s.def; });
 const zeroLv = () => Object.fromEntries(UPGRADES.map(u => [u.key, 0]));
 export const ZERO_LV = Object.freeze(zeroLv());
 const newShip = (kind, id) => ({ id, kind, lv: zeroLv(), parts: [], hull: SHIPS[kind].base.hull });
+// プレイの記録(実績に使う)
+const newStats = () => ({
+  flights: 0, landings: 0, crashes: 0, streak: 0, bestStreak: 0, explores: 0, dispatches: 0, fullLoads: 0, rare3: 0,
+  typesLanded: {}, specials: {}, tier5: {}
+});
 
 // ships = 持っている船(船ごとに強化・付けているパーツ・耐久を持つ)、active = 今乗っている船
 export const save = {
@@ -23,7 +28,9 @@ export const save = {
   active: 's1',
   nextId: 2,
   best: 0,       // これまでに到達した一番遠い距離(光年)
-  dispatch: []   // 派遣中の一覧
+  dispatch: [],  // 派遣中の一覧
+  stats: newStats(),
+  ach: []        // 達成した実績
 };
 // save.ship = 今乗っている船、save.hull = その耐久(保存はされない、ships の中身を指す)
 Object.defineProperty(save, 'ship', {
@@ -114,6 +121,8 @@ export function resetSave() {
   save.nextId = 2;
   save.best = 0;
   save.dispatch = [];
+  save.stats = newStats();
+  save.ach = [];
   persist();
 }
 
@@ -166,6 +175,17 @@ function loadSave(s) {
   const maxNum = Math.max(...ships.map(sh => parseInt(sh.id.slice(1), 10) || 0));
   save.nextId = Math.max(Number.isInteger(s.nextId) ? s.nextId : 0, maxNum + 1);
   save.best = typeof s.best === 'number' ? s.best : 0;
+  // 記録と実績(v4の途中で追加。なければ0から。★5は持っている素材から分かる分だけ埋める)
+  const stats = newStats();
+  if (s.stats && typeof s.stats === 'object') {
+    for (const k in stats) {
+      if (typeof stats[k] === 'number' && typeof s.stats[k] === 'number') stats[k] = s.stats[k];
+      else if (typeof stats[k] === 'object' && s.stats[k] && typeof s.stats[k] === 'object') stats[k] = { ...s.stats[k] };
+    }
+  }
+  TYPES.forEach(t => { if (save.res[`${t.key}5`]) stats.tier5[t.key] = true; });
+  save.stats = stats;
+  save.ach = Array.isArray(s.ach) ? s.ach.filter(k => typeof k === 'string') : [];
   save.dispatch = Array.isArray(s.dispatch)
     ? s.dispatch.filter(d => d && ships.some(sh => sh.id === d.ship) && d.ship !== save.active && hasCrew(d.crew) && typeof d.end === 'number')
     : [];

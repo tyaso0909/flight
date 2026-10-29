@@ -9,6 +9,7 @@ import './base.js';
 import './hangar.js';
 import './workshop.js';
 import './dispatch.js';
+import './records.js';
 
 // ボタンを押したときの小さな音
 document.addEventListener('click', (e) => {

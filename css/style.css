@@ -482,3 +482,34 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 @media (prefers-reduced-motion: reduce) {
   .ex-log > li.latest, .ex-log > li.latest .dq, .ex-node svg { animation: none !important; }
 }
+
+/* 記録と実績 */
+.records { width: min(95%, 1000px); height: min(90%, 640px); }
+.rc-cols { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 1.4em; align-items: start; }
+.rc-stats dd { font-family: var(--font-ui); }
+.rc-stats dd .on { color: var(--ok); margin-right: 0.5em; white-space: nowrap; }
+.rc-stats dd .off { color: var(--edge); margin-right: 0.5em; white-space: nowrap; }
+.ach-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4em; }
+.ach { display: grid; grid-template-columns: 1fr auto; gap: 0.8em; align-items: center; border: 1px solid var(--edge); border-radius: 8px; padding: 0.45em 0.7em; }
+.ach.ok { border-color: rgba(127, 224, 160, 0.5); background: rgba(127, 224, 160, 0.05); }
+.ach-main { display: grid; gap: 0.15em; min-width: 0; }
+.ach-main small { color: var(--muted); font-size: 0.8em; }
+.ach.ok .ach-main b { color: var(--ok); }
+.ach-bar { margin-top: 0.2em; }
+.ach-bar > i { background: var(--amber); }
+.ach.ok .ach-bar > i { background: var(--ok); }
+.ach-side { display: grid; justify-items: end; gap: 0.1em; font-family: var(--font-inst); }
+.ach-prog { font-size: 0.85em; color: var(--text); white-space: nowrap; }
+.ach.ok .ach-prog { color: var(--ok); }
+.ach-rew { font-size: 0.75em; color: var(--amber); white-space: nowrap; }
+.toast {
+  position: absolute; left: 50%; top: calc(10px + var(--st)); transform: translate(-50%, -140%); z-index: 50;
+  display: grid; justify-items: center; gap: 0.1em; padding: 0.55em 1.4em; border-radius: 10px;
+  background: rgba(11, 15, 23, 0.95); border: 1px solid var(--amber); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease-out; pointer-events: none; text-align: center;
+}
+.toast.show { transform: translate(-50%, 0); }
+.toast .tt-eye { font-family: var(--font-inst); font-size: 0.7em; letter-spacing: 0.12em; color: var(--amber); }
+.toast b { font-size: 1.05em; }
+.toast span:last-child { font-size: 0.78em; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }

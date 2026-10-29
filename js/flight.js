@@ -7,6 +7,7 @@ import { showScreen } from './ui.js';
 import { view, layout, tryLandscape } from './orientation.js';
 import { scene, camera, updateStreaks, world, clearWorld, spawnPlanet, spawnDebris, capOf, resetCamera, spawnSparks } from './world.js';
 import { sfx, engine } from './audio.js';
+import { record } from './records.js';
 import { tilt, calibrate, askTilt, readInput, boostHeld, boostButton } from './input.js';
 import { beginExplore } from './explore.js';
 
@@ -38,6 +39,7 @@ export async function launch() {
     showScreen('flying');
     sfx.launch();
     engine.start();
+    record.launch();
   }, 250);
 }
 

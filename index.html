@@ -75,6 +75,7 @@
     <button id="btnBoost" type="button" aria-label="ブースト(押している間加速)">ブースト</button>
   </div>
 
+  <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
   <div id="boostFx"></div>
   <div id="hitFx"></div>
   <div id="flash"></div>
@@ -86,6 +87,8 @@
       <div class="pn-head-side head-tools">
         <div id="baseNotice"></div>
         <button id="btnMute" class="chip-btn" type="button" aria-pressed="false">音 ON</button>
+        <button id="btnRecords" class="chip-btn" type="button">記録</button>
+        <button id="btnSettings" class="chip-btn" type="button">調整</button>
       </div>
     </header>
     <div class="pn-body">
@@ -120,8 +123,6 @@
       <button id="btnDispatch" class="btn" type="button">派遣<small id="dispatchBadge">仲間を送り出す</small></button>
       <button id="btnQuickFix" class="btn" type="button" hidden>応急修理<small>無料</small></button>
       <button id="btnFullFix" class="btn" type="button" hidden>完全修理<small>★1素材20</small></button>
-      <span class="pn-spacer"></span>
-      <button id="btnSettings" class="btn ghost" type="button">調整</button>
     </footer>
   </section>
 
@@ -192,6 +193,30 @@
       <button id="btnDpBack" class="btn" type="button">拠点へ戻る</button>
       <p id="dpSummary" class="foot-hint" style="text-align:right"></p>
       <button id="btnDpGo" class="btn primary big" type="button">送り出す</button>
+    </footer>
+  </section>
+
+  <!-- 記録と実績 -->
+  <section id="scrRecords" class="panel records" hidden aria-labelledby="rcTitle">
+    <header class="pn-head">
+      <div class="pn-title"><p class="eyebrow">記録</p><h1 id="rcTitle">記録と実績</h1></div>
+      <p class="pn-head-side note">実績を達成すると、設計図のかけらがもらえます。</p>
+    </header>
+    <div class="pn-body">
+      <div class="rc-cols">
+        <div>
+          <h2>これまでの記録</h2>
+          <dl id="rcStats" class="kv rc-stats"></dl>
+        </div>
+        <div>
+          <h2>実績 <span id="rcCount" class="loot-n"></span></h2>
+          <ul id="rcList" class="ach-list"></ul>
+        </div>
+      </div>
+    </div>
+    <footer class="pn-foot">
+      <span class="pn-spacer"></span>
+      <button id="btnRcBack" class="btn" type="button">拠点へ戻る</button>
     </footer>
   </section>
 

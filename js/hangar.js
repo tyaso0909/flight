@@ -8,6 +8,7 @@ import { onShow, onHide, showScreen } from './ui.js';
 import { onLayout } from './orientation.js';
 import { ShipViewer } from './ships.js';
 import { sfx } from './audio.js';
+import { checkAchievements } from './records.js';
 
 let viewer = null;
 let tab = 'up';            // 'up' = 強化 / 'parts' = パーツ / 'build' = 造船
@@ -82,6 +83,7 @@ function buy(key) {
   persist();
   render();
   sfx.buy();
+  checkAchievements();
   if (viewer) viewer.pulse();
 }
 
@@ -138,6 +140,7 @@ function make(key) {
   persist();
   render();
   sfx.buy();
+  checkAchievements();
 }
 function equip(key, on) {
   const eq = save.ship.parts;
@@ -158,6 +161,7 @@ function equip(key, on) {
   persist();
   render();
   sfx.buy();
+  checkAchievements();
   if (viewer) viewer.pulse();
 }
 
@@ -201,6 +205,7 @@ function build(kind) {
   persist();
   render();
   sfx.buy();
+  checkAchievements();
   if (viewer) viewer.pulse();
 }
 function switchShip(id) {

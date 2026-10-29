@@ -6,6 +6,7 @@ import { G } from './state.js';
 import { onShow, showScreen } from './ui.js';
 import { toList, canPay, pay, costHtml, ownedResHtml } from './resui.js';
 import { sfx } from './audio.js';
+import { checkAchievements } from './records.js';
 
 const smith = CREW.find(c => c.key === 'toolsmith');
 
@@ -55,6 +56,7 @@ function make(key) {
   persist();
   render();
   sfx.buy();
+  checkAchievements();
 }
 
 $('wsList').addEventListener('click', (e) => {

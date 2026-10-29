@@ -6,6 +6,7 @@ import { G } from './state.js';
 import { onShow, onHide, showScreen } from './ui.js';
 import { dropRow } from './resui.js';
 import { sfx } from './audio.js';
+import { record, checkAchievements } from './records.js';
 
 const crewOf = (key) => CREW.find(c => c.key === key);
 const shipOf = (id) => save.ships.find(s => s.id === id);
@@ -173,7 +174,9 @@ function receive(id) {
   Object.entries(d.loot).forEach(([k, n]) => { save.res[k] = (save.res[k] || 0) + n; });
   save.dispatch = save.dispatch.filter(x => x !== d);
   lastGot = { kind: shipOf(d.ship).kind, crew: d.crew, loot: d.loot };
+  record.dispatch(d.loot);
   persist();
+  checkAchievements();
   render();
   sfx.get(Math.max(1, ...Object.keys(d.loot).map(resTier)));
 }

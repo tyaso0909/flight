@@ -9,6 +9,7 @@ import { showScreen } from './ui.js';
 import { scene, world, clearWorld, resetCamera } from './world.js';
 import { sfx } from './audio.js';
 import { terrainURL } from './terrain.js';
+import { record, checkAchievements } from './records.js';
 
 const CRASH_DAMAGE = 30;   // 不時着で減る耐久
 const DANGER_DAMAGE = 10;  // 危険地帯の落石で減る耐久
@@ -36,9 +37,11 @@ export function beginExplore(p, crash, run) {
     p, crash, hullBefore, ly: Math.round(run.dist / 10), fuel: Math.round(run.fuel), maxFuel: run.maxFuel,
     actions: acts, maxActions: acts, nodes: makeNodes(p), gained: {}, crew: [], log: [], cap: cargoCap()
   };
+  record.land(p, crash);
   G.mode = 'explore';
   renderExplore();
   showScreen('explore');
+  checkAchievements();
 }
 
 function makeNodes(p) {
@@ -133,10 +136,12 @@ function explore(node) {
     cls = 'special';
   }
   ex.log.unshift({ label, drops: merge(drops), notes, cls });
+  record.explore(node.kind, p.type.key);
   // 一番レアな素材の音。仲間が加わったときと落石のときは別の音
   const top = Math.max(1, ...drops.map(d => resTier(d.key)));
   if (cls === 'crew') sfx.crew(); else sfx.get(top);
   if (cls === 'bad') setTimeout(() => sfx.hit(), 250);
+  checkAchievements();
   persist();
   renderExplore();
 }
@@ -222,6 +227,7 @@ function showExploreResult() {
   const ex = G.ex, p = ex.p;
   const { kept, left } = packCargo(ex.gained, ex.cap);
   Object.entries(kept).forEach(([k, n]) => { save.res[k] = (save.res[k] || 0) + n; });
+  record.loot(kept, cargoUsed(kept) >= ex.cap);
   persist();
 
   $('resTitle').textContent = `${p.type.name} ${p.name}`;
@@ -250,6 +256,7 @@ function showExploreResult() {
   G.mode = 'result';
   resetCamera();
   showScreen('result');
+  checkAchievements();
 }
 $('btnExDone').addEventListener('click', () => { if (G.ex) showExploreResult(); });
 $('btnHome').addEventListener('click', () => { G.mode = 'base'; showScreen('base'); });
