@@ -70,9 +70,11 @@ export async function tryLandscape() {
   } catch (e) { /* 向きを固定できない環境 */ }
 }
 
-// Android などでは、最初に画面に触れたときに全画面にする(ブラウザのバーを消して画面を広く使う)
+// Android などでは、最初に画面をタップしたときに全画面にする(ブラウザのバーを消して画面を広く使う)
 const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 if (!isIOS && document.documentElement.requestFullscreen && window.matchMedia && matchMedia('(pointer: coarse)').matches) {
-  const once = () => { tryLandscape(); window.removeEventListener('pointerdown', once, true); };
-  window.addEventListener('pointerdown', once, true);
+  // 指を置いた瞬間ではなくタップ(click)のときにする。スクロールしようとした指で全画面に切り替わると、
+  // 画面の大きさが変わってスクロールが途中で止まってしまうため
+  const once = () => { tryLandscape(); window.removeEventListener('click', once, true); };
+  window.addEventListener('click', once, true);
 }

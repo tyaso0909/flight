@@ -150,7 +150,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--ice); outli
   width: min(92%, 780px); max-height: 88%; overflow: auto; box-sizing: border-box;
   background: var(--panel); border: 1px solid var(--edge); border-radius: 10px;
   padding: 1.4em max(1.4em, 16px); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  touch-action: pan-y; -webkit-user-select: text; user-select: text;
+  touch-action: pan-x pan-y; -webkit-user-select: text; user-select: text;
 }
 .eyebrow { font-family: var(--font-inst); font-size: 0.75em; letter-spacing: 0.14em; color: var(--amber); margin: 0 0 0.2em; }
 .panel h1 { font-size: 1.5em; margin: 0 0 0.8em; text-wrap: balance; }
@@ -242,7 +242,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 #shipCanvas:active { cursor: grabbing; }
 .hg-badge { position: absolute; left: 0.8em; top: 0.6em; margin: 0; font-family: var(--font-inst); font-size: 0.75em; color: var(--amber); pointer-events: none; }
 .hg-cap { position: absolute; left: 0.8em; bottom: 0.5em; margin: 0; font-size: 0.72em; color: var(--muted); pointer-events: none; }
-.hg-side { overflow: auto; padding-right: 0.3em; touch-action: pan-y; }
+.hg-side { overflow: auto; padding-right: 0.3em; touch-action: pan-x pan-y; }
 .up-row { display: grid; grid-template-columns: 1fr auto; gap: 0.8em; align-items: center; padding: 0.5em 0; border-bottom: 1px dashed var(--edge); }
 .up-row:first-child { padding-top: 0; }
 .up-title { display: flex; align-items: center; gap: 0.6em; flex-wrap: wrap; }
@@ -357,10 +357,10 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .pn-title h1 { margin: 0; font-size: 1.35em; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pn-head-side { margin: 0; min-width: 0; }
 .pn-head .notice { margin: 0; padding: 0.35em 0.8em; }
-.pn-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding: 0.8em 1.3em; }
+.pn-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; padding: 0.8em 1.3em; }
 .pn-body.fill { overflow: hidden; display: flex; flex-direction: column; }
 .pn-body.fill > * { flex: 1 1 auto; min-height: 0; }
-.pn-foot { flex: none; display: flex; align-items: center; gap: 0.5em; padding: 0.55em 1.3em 0.7em; border-top: 1px solid var(--edge); background: rgba(8, 11, 18, 0.6); overflow-x: auto; touch-action: pan-x; }
+.pn-foot { flex: none; display: flex; align-items: center; gap: 0.5em; padding: 0.55em 1.3em 0.7em; border-top: 1px solid var(--edge); background: rgba(8, 11, 18, 0.6); overflow-x: auto; touch-action: pan-x pan-y; }
 .pn-spacer { flex: 1 1 auto; }
 .foot-hint { flex: 1 1 auto; margin: 0; color: var(--muted); font-size: 0.85em; min-width: 0; }
 
@@ -413,7 +413,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .hangar { width: min(95%, 1000px); height: min(90%, 640px); padding: 0; }
 .hangar .hg-grid { height: 100%; min-height: 0; }
 .workshop { height: min(90%, 640px); }
-.pn-foot .hg-res { flex: 1 1 auto; min-width: 0; max-height: none; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; touch-action: pan-x; padding-bottom: 2px; scrollbar-width: none; }
+.pn-foot .hg-res { flex: 1 1 auto; min-width: 0; max-height: none; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; touch-action: pan-x pan-y; padding-bottom: 2px; scrollbar-width: none; }
 .pn-foot .hg-res::-webkit-scrollbar { display: none; }
 .pn-foot .hg-res > span { flex: none; }
 #wsWho { max-width: 36em; }
@@ -422,7 +422,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .explore { width: min(95%, 1000px); height: min(90%, 620px); }
 .explore .ex-grid { height: 100%; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: stretch; }
 .explore .ex-map { aspect-ratio: auto; height: 100%; }
-.explore .ex-side { overflow-y: auto; min-height: 0; touch-action: pan-y; overscroll-behavior: contain; }
+.explore .ex-side { overflow-y: auto; min-height: 0; touch-action: pan-x pan-y; overscroll-behavior: contain; }
 .explore .ex-log { margin-top: 0.4em; }
 
 /* 航行記録:左に記録、右に素材 */
@@ -615,3 +615,8 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .kv dd .stops { margin: 0; padding-left: 1.3em; font-family: var(--font-ui); line-height: 1.55; }
 .kv dd .stops .stars { color: var(--amber); font-size: 0.85em; }
 #scrExplore .pn-foot .btn small { font-family: var(--font-inst); }
+
+/* スクロールする場所は縦横どちらの指の動きも受け付ける。
+   縦持ちで画面を90度回しているとき、見た目の「縦」スクロールは指の「横」の動きになるため、
+   pan-y だけだとブラウザがスクロールを止めてしまう */
+.pn-body, .hg-side, .explore .ex-side, .pn-foot, .pn-foot .hg-res, .res-wrap, .hg-res { touch-action: pan-x pan-y; }
