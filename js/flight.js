@@ -1,6 +1,6 @@
 // 飛行パート(操縦・ブースト・引力・デブリ・着陸演出・計器盤)
 import { $, clamp, rnd, stars } from './dom.js';
-import { V_MIN, V_START, V_MAX, zoneAt, DEBRIS_DMG } from './data.js';
+import { V_MIN, V_START, V_MAX, zoneAt, DEBRIS_DMG, TAKEOFF } from './data.js';
 import { cfg, save, persist, shipStats, hullEffects, maxHull, partFx, cargoCap } from './save.js';
 import { G } from './state.js';
 import { showScreen } from './ui.js';
@@ -36,12 +36,14 @@ export function resetRun() {
   G.trip = { gained: {}, stops: [], crew: [], hullStart: save.hull, cap: cargoCap(), explores: 0 };
 }
 
-// 探索のあと、残りの燃料でそのまま次の星へ
-export function relaunch() {
+// 探索のあと、残りの燃料でそのまま次の星へ。cost = 離陸に使う燃料
+export function relaunch(cost) {
   const run = G.run;
   clearWorld();
   resetCamera();
   freshLeg(run);
+  run.fuel = Math.max(0, run.fuel - cost);
+  run.v = Math.round(cfg.capture * TAKEOFF.speed);  // 引き込まれる速度ぎりぎり
   run.nextPlanet = run.dist + 900;
   run.nextBelt = Math.max(run.nextBelt, run.dist + 1500);
   run.nextStorm = Math.max(run.nextStorm, run.dist + 1200);

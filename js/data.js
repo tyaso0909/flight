@@ -65,6 +65,12 @@ export const zoneAt = (ly) => ZONES.reduce((z, x) => (ly >= x.ly ? x : z), ZONES
 // 大きなデブリに当たったときに減る耐久(ふつうのデブリは減速だけ)
 export const DEBRIS_DMG = { large: 8, huge: 16 };
 
+// 探索のあと星から飛び立つとき:引力を振り切るのに燃料を使う(大きい星・レアな星ほど多い)
+// 飛び立った直後の速度は「引き込まれる速度」ぎりぎり。ブーストしないとすぐ次の星に吸い込まれる
+export const TAKEOFF = { base: 12, size: 10, rare: 3, speed: 1.08 };
+// p = 星。r は 45〜95
+export const takeoffCost = (p) => Math.round(TAKEOFF.base + (p.r - 45) / 50 * TAKEOFF.size + (p.rar - 1) * TAKEOFF.rare);
+
 // 着陸後の探索地点
 export const KINDS = {
   vein: { name: '鉱脈' },

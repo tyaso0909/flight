@@ -2,7 +2,7 @@
 // 手に入れた素材はいったん「積み荷」に入れ、帰還するときに積載量の範囲で持ち帰る
 // 探索のあとは「次の星へ」で残りの燃料のまま旅を続けられる(積み荷は1回の出撃で共通)
 import { $, rnd, stars } from './dom.js';
-import { KINDS, CREW, SPECIAL, TIER_WEIGHTS, TIER_QTY, MAX_TIER, BLUEPRINT, resKey, resTier, gearName } from './data.js';
+import { KINDS, CREW, SPECIAL, TIER_WEIGHTS, TIER_QTY, MAX_TIER, BLUEPRINT, resKey, resTier, gearName, takeoffCost } from './data.js';
 import { dropRow } from './resui.js';
 import { save, persist, partFx, hasGear, hasCrew, crewHere, maxHull } from './save.js';
 import { G } from './state.js';
@@ -190,9 +190,11 @@ function renderExplore() {
   }).join('');
   $('exPips').innerHTML = Array.from({ length: ex.maxActions }, (_, i) => `<i class="pip${i < ex.actions ? ' on' : ''}"></i>`).join('');
   renderCargo();
-  const run = G.run, fuel = Math.round(run.fuel), canGo = fuel > 0 && save.hull > 0;
+  const run = G.run, fuel = Math.floor(run.fuel), cost = takeoffCost(p);
+  const fuelOk = fuel > cost, canGo = fuelOk && save.hull > 0;
   $('exHint').textContent = ex.actions > 0 ? '調べる地点をタップしてください。'
-    : !canGo ? '耐久が0のため、これ以上は飛べません。拠点へ帰還してください。'
+    : save.hull <= 0 ? '耐久が0のため、これ以上は飛べません。拠点へ帰還してください。'
+    : !fuelOk ? `この星から飛び立つには燃料が ${cost} より多く必要です。拠点へ帰還してください。`
     : '探索を終えました。次の星へ向かうか、拠点へ帰還します。';
   // ログ(新しいものが上)。素材は1行ずつ「色 / 名前 / ★ / +数」で並べる
   $('exLog').innerHTML = ex.log.length
@@ -205,7 +207,7 @@ function renderExplore() {
   $('btnExDone').innerHTML = `拠点へ帰還<small>積み荷を持ち帰る</small>`;
   const next = $('btnExNext');
   next.disabled = !canGo;
-  next.innerHTML = `${ex.actions > 0 ? '切り上げて' : ''}次の星へ<small>燃料 ${fuel} / ${Math.round(run.maxFuel)}・耐久 ${save.hull} / ${maxHull()}</small>`;
+  next.innerHTML = `${ex.actions > 0 ? '切り上げて' : ''}次の星へ<small>離陸 燃料−${cost}(${fuel} → ${Math.max(0, fuel - cost)})・耐久 ${save.hull}</small>`;
   $('btnExDone').classList.toggle('primary', !canGo);
   next.classList.toggle('primary', canGo);
 }
@@ -272,5 +274,9 @@ export function finishTrip(reason) {
   checkAchievements();
 }
 $('btnExDone').addEventListener('click', () => { if (G.ex) finishTrip('home'); });
-$('btnExNext').addEventListener('click', () => { if (G.ex && G.run.fuel > 0 && save.hull > 0) relaunch(); });
+$('btnExNext').addEventListener('click', () => {
+  if (!G.ex || save.hull <= 0) return;
+  const cost = takeoffCost(G.ex.p);
+  if (Math.floor(G.run.fuel) > cost) relaunch(cost);
+});
 $('btnHome').addEventListener('click', () => { G.mode = 'base'; showScreen('base'); });
