@@ -24,6 +24,9 @@ const newMerchant = () => ({ here: false, met: false, until: 0, flights: 0, last
 // side = 信号(サブミッション):active = 受信中、found = 見つけて報告待ち、done = 解決
 const newStory = () => ({ seen: [], coreBp: false, ready: false, lit: false, side: { active: [], found: [], done: [] } });
 
+// チュートリアル:done = 見終わった段階、skip = 「飛ばす」を押した
+const newTut = () => ({ done: [], skip: false });
+
 // ships = 持っている船(船ごとに強化・付けているパーツ・耐久を持つ)、active = 今乗っている船
 export const save = {
   v: SAVE_VERSION,
@@ -41,7 +44,8 @@ export const save = {
   credits: 0,    // 商人とのやりとりに使うお金(Cr)
   items: { warp: 0, core: 0 },  // 使うアイテム(ワープセル = 派遣の時短、灯火の核 = 物語の最後に使う)
   merchant: newMerchant(),
-  story: newStory()
+  story: newStory(),
+  tut: newTut()
 };
 // save.ship = 今乗っている船、save.hull = その耐久(保存はされない、ships の中身を指す)
 Object.defineProperty(save, 'ship', {
@@ -138,6 +142,7 @@ export function resetSave() {
   save.items = { warp: 0, core: 0 };
   save.merchant = newMerchant();
   save.story = newStory();
+  save.tut = newTut();
   persist();
 }
 
@@ -210,6 +215,9 @@ function loadSave(s) {
   ['coreBp', 'ready', 'lit'].forEach(k => { st[k] = so[k] === true; });
   if (so.side && typeof so.side === 'object') ['active', 'found', 'done'].forEach(k => { st.side[k] = strs(so.side[k]); });
   save.story = st;
+  // チュートリアル:なければ、すでに遊んでいるセーブ(出撃したことがある)は見たことにする
+  if (s.tut && typeof s.tut === 'object') save.tut = { done: strs(s.tut.done), skip: s.tut.skip === true };
+  else save.tut = save.stats.flights > 0 ? { done: ['base', 'flight', 'planet', 'explore', 'home'], skip: true } : newTut();
   const m = newMerchant();
   if (s.merchant && typeof s.merchant === 'object') {
     for (const k in m) if (typeof m[k] === typeof s.merchant[k]) m[k] = s.merchant[k];

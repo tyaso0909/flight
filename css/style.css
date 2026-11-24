@@ -679,3 +679,38 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .sg-hint { grid-column: 2 / span 2; font-size: 0.8em; color: var(--ice); }
 .ws-tag.story { border-color: var(--amber); color: var(--amber); }
 .up-row.special-item { border-color: rgba(255, 184, 77, 0.5); background: rgba(255, 184, 77, 0.05); }
+
+/* ===== チュートリアル ===== */
+.tut { position: absolute; inset: 0; z-index: 80; pointer-events: auto; touch-action: manipulation; }
+.tut-hole {
+  position: absolute; border-radius: 10px; pointer-events: none;
+  box-shadow: 0 0 0 200vmax rgba(2, 4, 10, 0.62); outline: 2px solid var(--amber); outline-offset: 0;
+  transition: left 0.3s ease, top 0.3s ease, width 0.3s ease, height 0.3s ease;
+  animation: tutPulse 1.4s ease-in-out infinite;
+}
+.tut-hole.none { outline: 0; animation: none; }
+@keyframes tutPulse { 50% { outline-color: rgba(255, 184, 77, 0.35); outline-offset: 4px; } }
+.tut-card {
+  position: absolute; left: 50%; width: min(30em, calc(100% - 2em - var(--sl) - var(--sr))); box-sizing: border-box;
+  transform: translateX(-50%); display: grid; grid-template-columns: auto 1fr; gap: 0.3em 0.8em; align-items: start;
+  padding: 0.75em 0.9em 0.6em; border-radius: 10px; border: 1px solid var(--edge); border-left: 3px solid var(--ice);
+  background: rgba(10, 14, 22, 0.96); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+.tut-card.top { top: calc(0.8em + var(--st)); }
+.tut-card.bottom { bottom: calc(0.8em + var(--sb)); }
+.tut-card.mid { top: 50%; transform: translate(-50%, -50%); }
+.tut-card.pop { animation: tutPop 0.25s ease-out; }
+.tut-card.mid.pop { animation: tutPopMid 0.25s ease-out; }
+@keyframes tutPop { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes tutPopMid { from { opacity: 0; transform: translate(-50%, calc(-50% + 6px)); } to { opacity: 1; transform: translate(-50%, -50%); } }
+.tut-pico {
+  width: 2.2em; height: 2.2em; border-radius: 50%; background: #e9edf5; position: relative; margin-top: 0.15em;
+  box-shadow: 0 0 0 2px rgba(255, 184, 77, 0.8), 0 0 14px rgba(98, 224, 255, 0.45);
+}
+.tut-pico::after { content: ''; position: absolute; left: 0.45em; top: 0.68em; width: 0.8em; height: 0.8em; border-radius: 50%; background: var(--ice); }
+.tut-name { font-size: 0.78em; color: var(--ice); }
+.tut-body p { margin: 0.1em 0 0; font-size: 0.95em; line-height: 1.6; }
+.tut-btns { grid-column: 1 / -1; display: flex; align-items: center; gap: 0.6em; }
+.tut-step { margin-left: auto; font-size: 0.75em; color: var(--muted); font-family: var(--font-inst); }
+.tut-btns .btn { min-width: 6em; }
+@media (prefers-reduced-motion: reduce) { .tut-hole, .tut-card.pop, .tut-card.mid.pop { animation: none; transition: none; } }

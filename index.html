@@ -142,6 +142,23 @@
     </footer>
   </section>
 
+  <!-- チュートリアル(ピコが画面の部品を照らして説明する) -->
+  <div id="tut" class="tut" hidden role="dialog" aria-label="チュートリアル">
+    <div id="tutHole" class="tut-hole"></div>
+    <div id="tutCard" class="tut-card">
+      <span class="tut-pico" aria-hidden="true"></span>
+      <div class="tut-body">
+        <b class="tut-name">ピコ</b>
+        <p id="tutText"></p>
+      </div>
+      <div class="tut-btns">
+        <button id="tutSkip" class="chip-btn" type="button">説明を飛ばす</button>
+        <span id="tutStep" class="tut-step"></span>
+        <button id="tutNext" class="btn primary" type="button">次へ</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 物語画面(紙芝居。タップで次へ) -->
   <section id="scrStory" class="story-scr" hidden aria-labelledby="storyTitle">
     <canvas id="storyArt" aria-hidden="true"></canvas>
@@ -364,6 +381,7 @@
     </div>
     <footer class="pn-foot">
       <button id="btnSetReset" class="btn" type="button">初期値に戻す</button>
+      <button id="btnTutReset" class="btn" type="button">チュートリアルをもう一度</button>
       <button id="btnWipe" class="btn" type="button">セーブデータを最初からにする</button>
       <span class="pn-spacer"></span>
       <button id="btnSetClose" class="btn primary" type="button">閉じる</button>

@@ -31,7 +31,7 @@ function frame(now) {
     requestAnimationFrame(frame);
     return;
   }
-  if (G.mode === 'flying') updateFlying(dt);
+  if (G.mode === 'flying') { if (!G.paused) updateFlying(dt); }
   else if (G.mode === 'landing') updateLanding(dt);
   else if (G.mode === 'explore') { if (G.ex) G.ex.p.body.rotation.y += G.ex.p.spin * dt * 0.4; }
   else {

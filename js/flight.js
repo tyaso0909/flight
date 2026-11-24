@@ -11,6 +11,7 @@ import { record } from './records.js';
 import { tilt, calibrate, askTilt, readInput, boostHeld, boostButton } from './input.js';
 import { beginExplore, finishTrip } from './explore.js';
 import { signalFor, storyMilestone, storyLit } from './story.js';
+import { tutorial } from './tutorial.js';
 
 const REDUCE = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 const tmpV = new THREE.Vector3();
@@ -105,6 +106,8 @@ export async function launch() {
     sfx.launch();
     engine.start();
     record.launch();
+    // はじめての飛行なら、操作の説明(そのあいだは止める)
+    setTimeout(() => { if (G.mode === 'flying') tutorial('flight'); }, 900);
   }, 250);
 }
 
@@ -227,7 +230,10 @@ export function updateFlying(dt) {
   // 一番近い星の引力
   let act = null;
   for (const p of planets) if (p.z > -900 && p.z < -80 && (!act || p.z > act.z)) act = p;
-  if (act !== run.active) { run.active = act; run.pull = 0; }
+  if (act !== run.active) {
+    run.active = act; run.pull = 0;
+    if (act) tutorial('planet');
+  }
   if (act) {
     if (run.v < capOf(act)) run.pull += dt / 1.5; else run.pull -= dt / 0.7;
     run.pull = clamp(run.pull, 0, 1);

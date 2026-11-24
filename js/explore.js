@@ -13,6 +13,7 @@ import { terrainURL } from './terrain.js';
 import { record, checkAchievements } from './records.js';
 import { relaunch } from './flight.js';
 import { onLanding } from './story.js';
+import { tutorial } from './tutorial.js';
 
 const DANGER_DAMAGE = 10;  // 危険地帯の落石で減る耐久
 const rarMult = (p) => [1, 1.6, 2.5][p.rar - 1];
@@ -43,6 +44,7 @@ export function beginExplore(p, run) {
   G.mode = 'explore';
   renderExplore();
   showScreen('explore');
+  setTimeout(() => { if (G.mode === 'explore') tutorial('explore'); }, 600);
   checkAchievements();
 }
 

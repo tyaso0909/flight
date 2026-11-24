@@ -12,6 +12,7 @@ import { merchantTick, openShop } from './merchant.js';
 import { doneCount } from './dispatch.js';
 import { SOLO } from './talk.js';
 import { runStory, signalCount } from './story.js';
+import { tutorial, resetTutorial } from './tutorial.js';
 
 const QUICK_FIX_RATE = 0.3; // 応急修理で戻る耐久(最大耐久に対する割合)
 
@@ -146,7 +147,14 @@ onShow('base', () => {
   firstVisit = false;
   renderBase();
   // 物語:まだ見ていない章・信号の報告・新しい信号があれば、物語画面へ
-  runStory();
+  // なければ、序章のあとにチュートリアル(はじめて / はじめて帰ってきたとき)
+  if (!runStory() && save.story.seen.includes('prologue')) {
+    setTimeout(() => { if (G.mode === 'base') tutorial('base') || (save.stats.flights > 0 && tutorial('home')); }, 700);
+  }
+});
+$('btnTutReset').addEventListener('click', () => {
+  resetTutorial();
+  $('btnTutReset').textContent = '拠点に戻ると始まります';
 });
 
 // 派遣ボタンに、帰ってきた件数・派遣中の件数を出す(拠点にいる間は15秒ごとに更新)
