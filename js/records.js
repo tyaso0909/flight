@@ -5,6 +5,7 @@ import { save, persist, totalLv } from './save.js';
 import { G } from './state.js';
 import { onShow, showScreen } from './ui.js';
 import { sfx } from './audio.js';
+import { renderArchive } from './story.js';
 
 const st = () => save.stats;
 const count = (obj) => Object.keys(obj || {}).length;
@@ -133,7 +134,20 @@ function render() {
     </li>`;
   }).join('');
 }
-onShow('records', render);
+// タブ:記録と実績 / 物語(これまでの物語と信号を振り返る)
+let rcTab = 'main';
+function setTab(t) {
+  rcTab = t;
+  $('tabRcMain').setAttribute('aria-selected', String(t === 'main'));
+  $('tabRcStory').setAttribute('aria-selected', String(t === 'story'));
+  $('rcMain').hidden = t !== 'main';
+  $('rcStory').hidden = t !== 'story';
+  $('rcTitle').textContent = t === 'main' ? '記録と実績' : '物語の振り返り';
+  if (t === 'story') renderArchive($('rcStory'));
+}
+$('tabRcMain').addEventListener('click', () => setTab('main'));
+$('tabRcStory').addEventListener('click', () => setTab('story'));
+onShow('records', () => { render(); setTab(rcTab); });
 $('btnRecords').addEventListener('click', () => { G.mode = 'records'; showScreen('records'); });
 $('btnRcBack').addEventListener('click', () => { G.mode = 'base'; showScreen('base'); });
 // 起動したときにも確認(古いセーブで、すでに条件を満たしているもの)

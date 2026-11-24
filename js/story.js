@@ -194,17 +194,34 @@ function nextScene() {
 }
 export function playScenes(list, onEnd) {
   scenes = list; si = 0; done = onEnd;
+  $('storyLog').hidden = true;
   G.mode = 'story';
   showScreen('story');
   sfx.crew();
   startScene();
 }
+// ログ:この場面のここまでのセリフを読み返す
+function openLog() {
+  const esc = (t) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  $('storyLogList').innerHTML = lines.slice(0, li + 1).map(([who, text]) => {
+    const name = who.startsWith('@') ? who.slice(1) : (NAMES[who] ?? '');
+    return `<li class="${who === 'ella' ? 'log' : name ? '' : 'narr'}">${name ? `<b>${esc(name)}</b>` : ''}<span>${esc(text)}</span></li>`;
+  }).join('');
+  $('storyLog').hidden = false;
+  const l = $('storyLogList'); l.scrollTop = l.scrollHeight;
+}
 $('scrStory').addEventListener('click', (e) => {
+  if (!$('storyLog').hidden) {
+    if (e.target.closest('#btnStoryLogClose') || !e.target.closest('.sy-log')) $('storyLog').hidden = true;
+    return;
+  }
+  if (e.target.closest('#btnStoryLog')) { openLog(); return; }
   if (e.target.closest('#btnStorySkip')) { sfx.click(); nextScene(); return; }
   advance();
 });
 document.addEventListener('keydown', (e) => {
   if (G.mode !== 'story') return;
+  if (!$('storyLog').hidden) { if (e.code === 'Escape') $('storyLog').hidden = true; return; }
   if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); advance(); }
   if (e.code === 'Escape') nextScene();
 });
@@ -217,7 +234,7 @@ function renderSignals() {
   const card = (m, state) => `<li class="sg-card ${state}">
       <div class="sg-head"><span class="sg-kind">${m.kind}</span><b>${m.title}</b></div>
       <p class="sg-goal">${state === 'done' ? '解決済み' : `目標:${sideGoal(m)}`}</p>
-      ${state === 'done' ? `<button class="btn" type="button" data-replay-side="${m.id}">見直す</button>` : ''}
+      ${state === 'done' ? `<button class="btn" type="button" data-replay-side="${m.id}">見直す</button>` : `<button class="btn" type="button" data-replay-intro="${m.id}">通信を聞く</button>`}
     </li>`;
   $('sgActive').innerHTML = act.length ? act.map(m => card(m, 'active')).join('')
     : `<li class="sg-empty">${seen('prologue') ? '今は受信している信号はありません。遠くへ行くと、新しい信号が届くことがあります。' : '物語の序章のあとで、信号が届くようになります。'}</li>`;
@@ -242,9 +259,47 @@ $('scrSignals').addEventListener('click', (e) => {
   const back = () => { G.mode = 'signals'; showScreen('signals'); };
   if (r) { const ch = CHAPTERS.find(c => c.id === r.dataset.replay); if (ch) playScenes([chapterScene(ch)], back); return; }
   const s = e.target.closest('[data-replay-side]');
-  if (s) { const m = SIDE.find(x => x.id === s.dataset.replaySide); if (m) playScenes([sideIntro(m), sideDone(m, '')], back); }
+  if (s) { const m = SIDE.find(x => x.id === s.dataset.replaySide); if (m) playScenes([sideIntro(m), sideDone(m, '')], back); return; }
+  const i = e.target.closest('[data-replay-intro]');
+  if (i) { const m = SIDE.find(x => x.id === i.dataset.replayIntro); if (m) playScenes([sideIntro(m)], back); }
 });
 onShow('signals', renderSignals);
+
+// ---------- 物語の振り返り(記録の画面の「物語」) ----------
+// 見た章と信号を、あらすじと一緒に並べる。「見る」で物語画面をもう一度再生できる
+export function renderArchive(el) {
+  const st = story();
+  const chs = CHAPTERS.filter(ch => seen(ch.id));
+  const next = CHAPTERS.find(ch => !seen(ch.id) && ch.id !== 'dark');
+  const nextHint = !next ? '' : next.id === 'final' ? '灯火の核を作り、積んだまま10,000光年より先へ'
+    : next.ly ? `${next.ly.toLocaleString('ja-JP')}光年に到達して拠点へ帰る` : '';
+  const item = (ep, title, summary, btn) => `<li class="ar-item">
+      <div class="ar-text"><span class="ar-ep">${ep}</span><b>${title}</b><p>${summary}</p></div>${btn}</li>`;
+  const sideDoneList = st.side.done.map(id => SIDE.find(x => x.id === id)).filter(Boolean);
+  const sideActive = st.side.active.map(id => SIDE.find(x => x.id === id)).filter(Boolean);
+  el.innerHTML = `
+    <section class="ar-sec">
+      <h2>本編「謎の信号を追う」<span class="loot-n">${chs.length} / ${CHAPTERS.length - (seen('dark') ? 0 : 1)}</span></h2>
+      ${chs.length ? `<ol class="ar-list">${chs.map(ch => item(ch.eyebrow, ch.title, ch.summary, `<button class="btn" type="button" data-replay="${ch.id}">見る</button>`)).join('')}</ol>` : '<p class="note">まだ物語はありません。</p>'}
+      ${next && nextHint ? `<p class="ar-next">次の手がかり:${nextHint}</p>` : ''}
+    </section>
+    <section class="ar-sec">
+      <h2>信号 <span class="loot-n">解決 ${sideDoneList.length} / ${SIDE.length}</span></h2>
+      ${sideActive.length || sideDoneList.length ? `<ol class="ar-list">
+        ${sideActive.map(m => item(`${m.kind}・受信中`, m.title, `目標:${sideGoal(m)}`, `<button class="btn" type="button" data-replay-intro="${m.id}">通信を聞く</button>`)).join('')}
+        ${sideDoneList.map(m => item(`${m.kind}・解決`, m.title, m.summary, `<button class="btn" type="button" data-replay-side="${m.id}">見る</button>`)).join('')}
+      </ol>` : '<p class="note">まだ信号はありません。</p>'}
+    </section>`;
+}
+$('rcStory').addEventListener('click', (e) => {
+  const back = () => { G.mode = 'records'; showScreen('records'); };
+  const r = e.target.closest('[data-replay]');
+  if (r) { const ch = CHAPTERS.find(c => c.id === r.dataset.replay); if (ch) playScenes([chapterScene(ch)], back); return; }
+  const s = e.target.closest('[data-replay-side]');
+  if (s) { const m = SIDE.find(x => x.id === s.dataset.replaySide); if (m) playScenes([sideIntro(m), sideDone(m, '')], back); return; }
+  const i = e.target.closest('[data-replay-intro]');
+  if (i) { const m = SIDE.find(x => x.id === i.dataset.replayIntro); if (m) playScenes([sideIntro(m)], back); }
+});
 $('btnSignals').addEventListener('click', () => { G.mode = 'signals'; showScreen('signals'); });
 $('btnSgBack').addEventListener('click', () => { G.mode = 'base'; showScreen('base'); });
 export const signalCount = () => story().side.active.length;

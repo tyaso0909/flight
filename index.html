@@ -90,7 +90,7 @@
         <button id="btnSignals" class="chip-btn" type="button">信号<span id="sgBadge" class="sg-badge" hidden></span></button>
         <button id="btnStorage" class="chip-btn" type="button">倉庫</button>
         <button id="btnRecords" class="chip-btn" type="button">記録</button>
-        <button id="btnSettings" class="chip-btn" type="button">調整</button>
+        <button id="btnSettings" class="chip-btn" type="button">設定</button>
         <button id="btnMute" class="chip-btn" type="button" aria-pressed="false">音 ON</button>
       </div>
     </header>
@@ -166,7 +166,14 @@
       <p id="storyEyebrow" class="eyebrow">序章</p>
       <h1 id="storyTitle">目覚めの信号</h1>
     </div>
-    <button id="btnStorySkip" class="chip-btn sy-skip" type="button">スキップ</button>
+    <div class="sy-tools">
+      <button id="btnStoryLog" class="chip-btn" type="button">ログ</button>
+      <button id="btnStorySkip" class="chip-btn" type="button">スキップ</button>
+    </div>
+    <div id="storyLog" class="sy-log" hidden role="dialog" aria-label="これまでのセリフ">
+      <div class="sy-log-head"><b>これまでのセリフ</b><button id="btnStoryLogClose" class="chip-btn" type="button">閉じる</button></div>
+      <ol id="storyLogList" class="sy-log-list"></ol>
+    </div>
     <div id="storyBox" class="sy-box" aria-live="polite">
       <b id="storyWho" class="sy-who"></b>
       <p id="storyText" class="sy-text"></p>
@@ -300,10 +307,14 @@
   <section id="scrRecords" class="panel records" hidden aria-labelledby="rcTitle">
     <header class="pn-head">
       <div class="pn-title"><p class="eyebrow">記録</p><h1 id="rcTitle">記録と実績</h1></div>
-      <p class="pn-head-side note">実績を達成すると、設計図のかけらがもらえます。</p>
+      <div class="tabs" role="tablist" aria-label="記録の画面">
+        <button id="tabRcMain" type="button" role="tab" aria-selected="true" aria-controls="rcMain">記録と実績</button>
+        <button id="tabRcStory" type="button" role="tab" aria-selected="false" aria-controls="rcStory">物語</button>
+      </div>
     </header>
     <div class="pn-body">
-      <div class="rc-cols">
+      <div id="rcStory" class="rc-story" role="tabpanel" hidden></div>
+      <div id="rcMain" class="rc-cols" role="tabpanel">
         <div>
           <h2>これまでの記録</h2>
           <dl id="rcStats" class="kv rc-stats"></dl>
@@ -365,24 +376,36 @@
     </footer>
   </section>
 
-  <!-- 数値の調整 -->
-  <section id="scrSettings" class="panel" hidden aria-labelledby="setTitle">
+  <!-- 設定(音と操作) -->
+  <section id="scrSettings" class="panel settings" hidden aria-labelledby="setTitle">
     <header class="pn-head">
-      <div class="pn-title"><p class="eyebrow">調整</p><h1 id="setTitle">数値の調整</h1></div>
+      <div class="pn-title"><p class="eyebrow">設定</p><h1 id="setTitle">設定</h1></div>
     </header>
     <div class="pn-body">
-      <div class="set-grid" id="setGrid"></div>
-      <div class="toggles">
-        <label><input type="checkbox" id="invX"> 傾きの左右を反転</label>
-        <label><input type="checkbox" id="invY"> 傾きの上下を反転</label>
-        <label><input type="checkbox" id="optMute"> 音を消す</label>
+      <div class="set-cols">
+        <section class="set-group" aria-labelledby="setSound">
+          <h2 id="setSound">音</h2>
+          <div id="setSoundRows"></div>
+          <label class="set-check"><input type="checkbox" id="optMute"> 音を消す</label>
+        </section>
+        <section class="set-group" aria-labelledby="setControl">
+          <h2 id="setControl">操作</h2>
+          <div id="setControlRows"></div>
+          <label class="set-check"><input type="checkbox" id="invX"> 傾きの左右を反転</label>
+          <label class="set-check"><input type="checkbox" id="invY"> 傾きの上下を反転</label>
+        </section>
+        <section class="set-group" aria-labelledby="setOther">
+          <h2 id="setOther">その他</h2>
+          <div class="set-actions">
+            <button id="btnTutReset" class="btn" type="button">チュートリアルをもう一度</button>
+            <button id="btnWipe" class="btn danger" type="button">セーブデータを消す</button>
+          </div>
+          <p class="note">設定とセーブデータは、この端末のブラウザに保存されます。</p>
+        </section>
       </div>
-      <p class="note">調整した値とセーブデータは、この端末のブラウザに保存されます。燃料・加速・燃料消費は強化前の基本値で、強化や船の種類による倍率がこれにかかります。</p>
     </div>
     <footer class="pn-foot">
       <button id="btnSetReset" class="btn" type="button">初期値に戻す</button>
-      <button id="btnTutReset" class="btn" type="button">チュートリアルをもう一度</button>
-      <button id="btnWipe" class="btn" type="button">セーブデータを最初からにする</button>
       <span class="pn-spacer"></span>
       <button id="btnSetClose" class="btn primary" type="button">閉じる</button>
     </footer>

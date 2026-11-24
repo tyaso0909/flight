@@ -1,12 +1,12 @@
 // 調整値とセーブデータ。この端末のブラウザ(localStorage)に保存する
-import { SETTINGS, UPGRADES, SHIPS, MAX_LV, PARTS, GEAR, TYPES, RES, CREW, WEIGHT_BURN } from './data.js';
+import { TUNING, SETTINGS, UPGRADES, SHIPS, MAX_LV, PARTS, GEAR, TYPES, RES, CREW, WEIGHT_BURN } from './data.js';
 
 const CFG_KEY = 'tiltflight.cfg';
 const SAVE_KEY = 'tiltflight.save';
 const SAVE_VERSION = 4;
 
 export const cfg = { invX: false, invY: false, mute: false };
-SETTINGS.forEach(s => { cfg[s.key] = s.def; });
+[...SETTINGS, ...TUNING].forEach(s => { cfg[s.key] = s.def; });
 
 const zeroLv = () => Object.fromEntries(UPGRADES.map(u => [u.key, 0]));
 export const ZERO_LV = Object.freeze(zeroLv());
@@ -234,8 +234,9 @@ try {
   if (c) {
     // 旧版は全項目を保存していたので、旧初期値(感度1)のままなら新しい初期値を使う
     if (!c.v && c.sens === 1) delete c.sens;
-    delete c.v;
-    Object.assign(cfg, c);
+    // 読み込むのは設定画面の項目だけ(以前の版で変えたゲームの調整値は使わず、決めた値で遊ぶ)
+    ['invX', 'invY', 'mute'].forEach(k => { if (typeof c[k] === 'boolean') cfg[k] = c[k]; });
+    SETTINGS.forEach(s => { if (typeof c[s.key] === 'number' && c[s.key] >= s.min && c[s.key] <= s.max) cfg[s.key] = c[s.key]; });
   }
   const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
   if (s) loadSave(s);

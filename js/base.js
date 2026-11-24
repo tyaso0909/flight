@@ -1,4 +1,4 @@
-// 拠点(出撃準備・修理)と「数値の調整」画面
+// 拠点(出撃準備・修理)と「設定」画面
 import { $, clamp } from './dom.js';
 import { SETTINGS, TYPES, CREW, SHIPS, MAX_LV, UPGRADES, MAX_TIER, FULL_FIX_COST, resKey } from './data.js';
 import { cfg, save, persist, shipStats, maxHull, hullEffects, totalLv, resetSave, cargoCap, hasGear, hasCrew, crewBusy } from './save.js';
@@ -191,23 +191,26 @@ $('btnFullFix').addEventListener('click', () => {
   persist(); renderBase();
 });
 
-// ---------- 数値の調整 ----------
-$('setGrid').innerHTML = SETTINGS.map(s => `
+// ---------- 設定(音と操作) ----------
+const fmtSet = (s, v) => (s.pct ? `${Math.round(v * 100)}%` : v.toFixed(1));
+const setRow = (s) => `
   <div class="set-row">
     <label for="set-${s.key}"><span>${s.label}</span><output id="out-${s.key}"></output></label>
     <input type="range" id="set-${s.key}" min="${s.min}" max="${s.max}" step="${s.step}">
-    <small>${s.hint}</small>
-  </div>`).join('');
+    ${s.hint ? `<small>${s.hint}</small>` : ''}
+  </div>`;
+$('setSoundRows').innerHTML = SETTINGS.filter(s => s.group === 'sound').map(setRow).join('');
+$('setControlRows').innerHTML = SETTINGS.filter(s => s.group === 'control').map(setRow).join('');
 function syncSettings() {
-  SETTINGS.forEach(s => { $('set-' + s.key).value = cfg[s.key]; $('out-' + s.key).textContent = cfg[s.key]; });
+  SETTINGS.forEach(s => { $('set-' + s.key).value = cfg[s.key]; $('out-' + s.key).textContent = fmtSet(s, cfg[s.key]); });
   $('invX').checked = cfg.invX; $('invY').checked = cfg.invY; $('optMute').checked = cfg.mute;
 }
 SETTINGS.forEach(s => {
-  $('set-' + s.key).addEventListener('input', (e) => { cfg[s.key] = parseFloat(e.target.value); $('out-' + s.key).textContent = cfg[s.key]; persist(); applyVolume(); });
+  $('set-' + s.key).addEventListener('input', (e) => { cfg[s.key] = parseFloat(e.target.value); $('out-' + s.key).textContent = fmtSet(s, cfg[s.key]); persist(); applyVolume(); });
 });
 $('invX').addEventListener('change', (e) => { cfg.invX = e.target.checked; persist(); });
 $('invY').addEventListener('change', (e) => { cfg.invY = e.target.checked; persist(); });
-// 音のオン・オフ(拠点の見出しのボタンと、調整画面のチェック)
+// 音のオン・オフ(拠点の見出しのボタンと、設定画面のチェック)
 function setMute(m) {
   cfg.mute = m; persist(); applyVolume();
   $('btnMute').textContent = m ? '音 OFF' : '音 ON';
@@ -220,7 +223,7 @@ setMute(cfg.mute);
 onShow('settings', syncSettings);
 $('btnSettings').addEventListener('click', () => { G.mode = 'settings'; showScreen('settings'); });
 $('btnSetClose').addEventListener('click', () => { G.mode = 'base'; showScreen('base'); });
-$('btnSetReset').addEventListener('click', () => { SETTINGS.forEach(s => { cfg[s.key] = s.def; }); cfg.invX = cfg.invY = false; persist(); syncSettings(); applyVolume(); });
+$('btnSetReset').addEventListener('click', () => { SETTINGS.forEach(s => { cfg[s.key] = s.def; }); cfg.invX = cfg.invY = false; setMute(false); persist(); syncSettings(); applyVolume(); });
 
 // セーブデータを最初からにする(画面内で2回押して確定)
 const wipe = $('btnWipe');
@@ -230,11 +233,11 @@ wipe.addEventListener('click', () => {
     wipeArmed = true;
     wipe.textContent = 'もう一度押すと消えます';
     clearTimeout(wipeTimer);
-    wipeTimer = setTimeout(() => { wipeArmed = false; wipe.textContent = 'セーブデータを最初からにする'; }, 3000);
+    wipeTimer = setTimeout(() => { wipeArmed = false; wipe.textContent = 'セーブデータを消す'; }, 3000);
     return;
   }
   wipeArmed = false; clearTimeout(wipeTimer);
-  wipe.textContent = 'セーブデータを最初からにする';
+  wipe.textContent = 'セーブデータを消す';
   resetSave();
   G.mode = 'base'; showScreen('base');
 });

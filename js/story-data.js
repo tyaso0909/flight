@@ -1,5 +1,6 @@
 // 物語「謎の信号を追う」と、サブミッション(信号)のセリフ。ここを書き換えれば物語を変えられる
 // セリフは [話す人, 文, 絵] の並び。絵を書いた行から、その絵に切り替わる
+// summary = 振り返り(記録の画面の「物語」)に出すあらすじ
 // 話す人:sys = 地の文、pico ピコ、garan ガラン、ella エラ(記録)、仲間のキー(仲間にしていないときはその行を飛ばす)、'@名前' = その場かぎりの人物
 // 絵:station / station_lit / signal / halcyon / debris / blackbox / storm / lighthouse / lighthouse_lit / merchant / pod / planet:ice など
 
@@ -7,7 +8,7 @@
 // when(c) が true になったら、拠点に戻ったときに再生する。c = { best, ready, lit, seen(id) }
 export const CHAPTERS = [
   {
-    id: 'prologue', eyebrow: '序章', title: '目覚めの信号', art: 'station',
+    id: 'prologue', summary: 'ステーションの受信機が、遠い宇宙から届く古い信号を拾った。ピコはその信号に覚えがあるが、思い出せない。', eyebrow: '序章', title: '目覚めの信号', art: 'station',
     when: () => true,
     lines: [
       ['sys', '辺境の古いステーション。新しい船長がここへ来て、何日かがたった。'],
@@ -22,7 +23,7 @@ export const CHAPTERS = [
     ]
   },
   {
-    id: 'ch1', eyebrow: '第1章', title: '信号の届く距離', art: 'signal', ly: 1000,
+    id: 'ch1', summary: '信号の一部が解け、「ハルシオン」という名前が現れた。ピコが最初に乗っていた船で、ガランによれば、デブリの海の先へ行ったきり戻らなかった探査船だという。', eyebrow: '第1章', title: '信号の届く距離', art: 'signal', ly: 1000,
     when: (c) => c.best >= 1000,
     lines: [
       ['pico', '船長! 1,000光年を越えたところで、信号がはっきりしまシタ。'],
@@ -39,7 +40,7 @@ export const CHAPTERS = [
     ]
   },
   {
-    id: 'ch2', eyebrow: '第2章', title: '影の宇宙', art: 'debris', ly: 3000,
+    id: 'ch2', summary: '残がいの海でハルシオン号のブラックボックスを見つけた。船長エラの記録から、エラたちも同じ信号を追っていたことが分かった。', eyebrow: '第2章', title: '影の宇宙', art: 'debris', ly: 3000,
     when: (c) => c.best >= 3000,
     lines: [
       ['sys', '3,000光年。残がいの海の奥で、船長は小さな光の点滅に気づいた。'],
@@ -57,7 +58,7 @@ export const CHAPTERS = [
     ]
   },
   {
-    id: 'ch3', eyebrow: '第3章', title: '星の海の奥', art: 'storm', ly: 6000,
+    id: 'ch3', summary: '磁気嵐の奥に、古代の塔が並んでいた。塔は深淵を渡る旅人のための星の灯台で、奥の大灯台の灯が弱ったせいで嵐が起きていた。エラは灯火の核の設計図を残していた。', eyebrow: '第3章', title: '星の海の奥', art: 'storm', ly: 6000,
     when: (c) => c.best >= 6000,
     reward: { coreBp: true },
     lines: [
@@ -77,7 +78,7 @@ export const CHAPTERS = [
   },
   {
     // 10,000光年に着いたが、灯火の核を持っていなかったとき
-    id: 'dark', eyebrow: '終章', title: '暗い灯台', art: 'lighthouse', ly: 10000,
+    id: 'dark', summary: '10,000光年の果てで、灯の消えかけた星の灯台と、ふもとに停まったハルシオン号を見つけた。灯をともすには、灯火の核が要る。', eyebrow: '終章', title: '暗い灯台', art: 'lighthouse', ly: 10000,
     when: (c) => c.best >= 10000 && !c.ready && !c.lit && c.seen('ch3'),
     lines: [
       ['sys', '10,000光年。深淵の果てに、巨大な塔が立っていた。'],
@@ -89,7 +90,7 @@ export const CHAPTERS = [
     ]
   },
   {
-    id: 'final', eyebrow: '終章', title: '信号の先へ', art: 'lighthouse', ly: 10000,
+    id: 'final', summary: 'エラは灯台守として残り、新しい船長を待つためにピコをステーションへ帰していた。信号は、次の灯台守を呼ぶ声だった。船長は灯火の核で灯台に灯をともした。', eyebrow: '終章', title: '信号の先へ', art: 'lighthouse', ly: 10000,
     when: (c) => c.ready && c.seen('ch3'),
     reward: { lit: true },
     lines: [
@@ -107,7 +108,7 @@ export const CHAPTERS = [
     ]
   },
   {
-    id: 'epilogue', eyebrow: 'エピローグ', title: '灯台のある宇宙', art: 'station_lit',
+    id: 'epilogue', summary: '灯台の光が航路を照らし、嵐は静まった。船長とピコの旅は、これからも続く。', eyebrow: 'エピローグ', title: '灯台のある宇宙', art: 'station_lit',
     when: (c) => c.lit && c.seen('final'),
     lines: [
       ['sys', 'ステーションの窓から、遠くに小さな光が見えるようになった。'],
@@ -127,7 +128,7 @@ export const CHAPTERS = [
 // reward:素材のキー → 数、warp = ワープセル、credits = Cr、blueprint = 設計図のかけら、r5 = ランダムな★5
 export const SIDE = [
   {
-    id: 'icehaul', kind: '救難信号', title: '凍りついた採掘船', unlock: 0, type: 'ice', ly: 300,
+    id: 'icehaul', summary: '氷の星で凍りついた採掘船ボルグ号を助け出した。', kind: '救難信号', title: '凍りついた採掘船', unlock: 0, type: 'ice', ly: 300,
     reward: { ice2: 8, ice3: 3 },
     intro: [
       ['pico', '救難信号を受信しまシタ!', 'signal'],
@@ -141,7 +142,7 @@ export const SIDE = [
     ]
   },
   {
-    id: 'song', kind: '謎の信号', title: '森で鳴る歌', unlock: 200, type: 'forest', ly: 600,
+    id: 'song', summary: '森の奥で、持ち主を待ちながら歌い続けるオルゴール型のドローンを見つけた。', kind: '謎の信号', title: '森で鳴る歌', unlock: 200, type: 'forest', ly: 600,
     reward: { forest2: 8, warp: 1 },
     intro: [
       ['pico', '信号を受信……これは、歌デス?', 'signal'],
@@ -156,7 +157,7 @@ export const SIDE = [
     ]
   },
   {
-    id: 'cargo', kind: '救難信号', title: '燃える貨物船', unlock: 600, type: 'lava', ly: 1200,
+    id: 'cargo', summary: '火山星に不時着した貨物船のリコを助け、積み荷を守った。', kind: '救難信号', title: '燃える貨物船', unlock: 600, type: 'lava', ly: 1200,
     reward: { credits: 250, lava3: 5 },
     intro: [
       ['@貨物船リコ', 'メーデー、メーデー! 火山星に不時着した! 船が溶岩に沈みそう!', 'signal'],
@@ -169,7 +170,7 @@ export const SIDE = [
     ]
   },
   {
-    id: 'okaeri', kind: '謎の信号', title: 'おかえりの声', unlock: 900, type: 'machine', ly: 1500,
+    id: 'okaeri', summary: '誰もいない工場で「おかえり」を言い続けていた古いロボットに、ピコが「ただいま」と返した。', kind: '謎の信号', title: 'おかえりの声', unlock: 900, type: 'machine', ly: 1500,
     reward: { blueprint: 2 },
     intro: [
       ['pico', '機械星から、同じ言葉をくりかえす信号デス。', 'signal'],
@@ -184,7 +185,7 @@ export const SIDE = [
     ]
   },
   {
-    id: 'capsule', kind: '漂流信号', title: '時のカプセル', unlock: 1300, type: 'gas', ly: 2000,
+    id: 'capsule', summary: 'ガスの雲の中で、子どもの手紙が入った時のカプセルを見つけた。', kind: '漂流信号', title: '時のカプセル', unlock: 1300, type: 'gas', ly: 2000,
     reward: { gas4: 1, gas2: 6 },
     intro: [
       ['pico', 'とても小さな信号デス。ガス星の上を漂っているみたいデス。', 'signal'],
@@ -198,7 +199,7 @@ export const SIDE = [
     ]
   },
   {
-    id: 'drone', kind: '救難信号', title: '迷子の調査ドローン', unlock: 1800, type: null, rar: 2, ly: 2500,
+    id: 'drone', summary: '迷子の調査ドローンのミミを見つけて、ステーションに連れて帰った。', kind: '救難信号', title: '迷子の調査ドローン', unlock: 1800, type: null, rar: 2, ly: 2500,
     reward: { warp: 2 },
     intro: [
       ['@ドローン ミミ', 'ピ……ピ……ミミは迷子デス……おうちがわかりまセン……', 'signal'],
@@ -213,7 +214,7 @@ export const SIDE = [
     ]
   },
   {
-    id: 'lantern', kind: '依頼', title: 'ガランの落とし物', unlock: 2400, type: 'lava', ly: 3000,
+    id: 'lantern', summary: 'ガランが火山星に落とした、父の形見のランタンを見つけた。', kind: '依頼', title: 'ガランの落とし物', unlock: 2400, type: 'lava', ly: 3000,
     reward: { credits: 400, lava4: 1 },
     intro: [
       ['garan', '船長、ちょっと頼みがあるんだ。', 'merchant'],
@@ -227,7 +228,7 @@ export const SIDE = [
     ]
   },
   {
-    id: 'twins', kind: '謎の信号', title: '双子の星', unlock: 3200, type: 'ice', ly: 4000,
+    id: 'twins', summary: '相手が消えたことを知らずに信号を送り続ける観測塔に、ピコが返事をした。', kind: '謎の信号', title: '双子の星', unlock: 3200, type: 'ice', ly: 4000,
     reward: { ice4: 2, ice3: 4 },
     intro: [
       ['pico', 'ふたつの信号が、こたえ合うように鳴っていマス。', 'signal'],
@@ -241,7 +242,7 @@ export const SIDE = [
     ]
   },
   {
-    id: 'littlelight', kind: '謎の信号', title: '嵐の中の小さな灯', unlock: 4500, type: 'machine', ly: 5000,
+    id: 'littlelight', summary: '嵐の中で、大灯台の光を中継する小さな灯台を見つけた。', kind: '謎の信号', title: '嵐の中の小さな灯', unlock: 4500, type: 'machine', ly: 5000,
     reward: { blueprint: 3, machine4: 1 },
     intro: [
       ['pico', '嵐の宙域の中に、弱い光の信号がありマス。', 'storm'],
@@ -255,7 +256,7 @@ export const SIDE = [
     ]
   },
   {
-    id: 'lifeboat', kind: '救難信号', title: 'ハルシオンの救命艇', unlock: 6000, type: null, rar: 3, ly: 7000,
+    id: 'lifeboat', summary: 'ハルシオン号の救命艇を見つけた。エラは仲間を先に帰し、ひとりで灯台に残っていた。', kind: '救難信号', title: 'ハルシオンの救命艇', unlock: 6000, type: null, rar: 3, ly: 7000,
     reward: { r5: 1 },
     intro: [
       ['pico', '……この信号は! ハルシオン号の救命艇デス!', 'signal'],

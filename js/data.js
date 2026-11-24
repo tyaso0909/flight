@@ -6,18 +6,23 @@ export const V_START = 240;
 export const V_MAX = 420;
 
 // 「数値の調整」画面に出す項目(燃料・加速・燃料消費は強化前の基本値)
+// 「設定」の画面でプレイヤーが変えられる項目(ふつうのゲームと同じく、音と操作だけ)
+// pct = 0〜1 の値を % で見せる
 export const SETTINGS = [
-  { key: 'capture', label: '引力の強さ', hint: 'この速度を下回ると引き寄せられる(星の大きさで±)', min: 100, max: 240, step: 5, def: 165 },
-  { key: 'drag', label: '減速の速さ', hint: 'ブーストしていないとき1秒に落ちる速度', min: 4, max: 30, step: 1, def: 12 },
-  { key: 'accel', label: 'ブーストの加速(基本値)', hint: 'ブースト中に1秒で上がる速度', min: 30, max: 160, step: 5, def: 75 },
-  { key: 'fuel', label: '燃料タンク(基本値)', hint: '出撃時の燃料', min: 40, max: 200, step: 10, def: 100 },
-  { key: 'burn', label: '燃料消費(基本値)', hint: 'ブースト1秒あたりの消費', min: 4, max: 25, step: 1, def: 10 },
-  { key: 'debris', label: 'デブリの量', hint: '0で出現しない', min: 0, max: 3, step: 0.5, def: 1 },
-  { key: 'sens', label: '傾きの感度', hint: '大きいほど少しの傾きで動く', min: 0.5, max: 2.5, step: 0.1, def: 1.5 },
-  { key: 'spacing', label: '星の間隔', hint: '次の星が現れるまでの距離', min: 900, max: 3000, step: 100, def: 1700 },
-  { key: 'sfxVol', label: '効果音の音量', hint: '0で効果音なし', min: 0, max: 1, step: 0.05, def: 0.7 },
-  { key: 'bgmVol', label: 'BGMの音量', hint: '0でBGMなし', min: 0, max: 1, step: 0.05, def: 0.4 },
-  { key: 'dispatchScale', label: '派遣にかかる時間(確認用)', hint: '1で本来の時間。0.01にすると100倍速で終わる', min: 0.01, max: 1, step: 0.01, def: 1 }
+  { key: 'bgmVol', group: 'sound', label: 'BGMの音量', min: 0, max: 1, step: 0.05, def: 0.4, pct: true },
+  { key: 'sfxVol', group: 'sound', label: '効果音の音量', min: 0, max: 1, step: 0.05, def: 0.7, pct: true },
+  { key: 'sens', group: 'control', label: '傾きの感度', hint: '大きいほど、少し傾けただけで大きく動きます', min: 0.5, max: 2.5, step: 0.1, def: 1.5 }
+];
+// ゲームの調整値(画面には出さない。遊びやすさを変えるときはここの def を書き換える)
+export const TUNING = [
+  { key: 'capture', def: 165 },      // 引力の強さ:この速度を下回ると引き寄せられる(星の大きさで±)
+  { key: 'drag', def: 12 },          // 減速の速さ:ブーストしていないとき1秒に落ちる速度
+  { key: 'accel', def: 75 },         // ブーストの加速(基本値):ブースト中に1秒で上がる速度
+  { key: 'fuel', def: 100 },         // 燃料タンク(基本値):出撃時の燃料
+  { key: 'burn', def: 10 },          // 燃料消費(基本値):ブースト1秒あたりの消費
+  { key: 'debris', def: 1 },         // デブリの量:0で出現しない
+  { key: 'spacing', def: 1700 },     // 星の間隔:次の星が現れるまでの距離
+  { key: 'dispatchScale', def: 1 }   // 派遣にかかる時間:1で本来の時間。確認用に 0.01 にすると100倍速
 ];
 
 // 星の属性と、そこで採れる素材(★1〜★5)。素材の名前は items を書き換えれば変えられる
