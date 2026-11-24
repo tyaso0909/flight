@@ -11,6 +11,7 @@ import { refreshStation, merchantInstant, setStationActions, setStationContext, 
 import { merchantTick, openShop } from './merchant.js';
 import { doneCount } from './dispatch.js';
 import { SOLO } from './talk.js';
+import { runStory, signalCount } from './story.js';
 
 const QUICK_FIX_RATE = 0.3; // 応急修理で戻る耐久(最大耐久に対する割合)
 
@@ -36,6 +37,9 @@ export function renderBase() {
   $('bCredits').textContent = save.credits.toLocaleString('ja-JP');
   $('bWarp').innerHTML = save.items.warp ? `<span class="sep">・</span>ワープセル <b>${save.items.warp}</b>` : '';
   $('btnShop').hidden = !save.merchant.here;
+  const sg = signalCount();
+  $('sgBadge').hidden = !sg;
+  $('sgBadge').textContent = sg;
   setTagSub('hangar', save.hull < mh * 0.7 ? '要修理' : '', save.hull < mh * 0.7);
 
   const total = TYPES.reduce((s, t) => s + (save.res[resKey(t.key, 1)] || 0), 0);
@@ -112,7 +116,10 @@ setStationContext(() => {
     tier5: Object.keys(save.stats.tier5).length > 0,
     oneShip: save.ships.length < 2,
     hasTool: hasCrew('toolsmith'),
-    crewCount: save.crew.length
+    crewCount: save.crew.length,
+    lit: save.story.lit,
+    signal: save.story.side.active.length > 0,
+    coreBp: save.story.coreBp && !save.story.lit
   };
 });
 $('scene').addEventListener('click', (e) => {
@@ -138,6 +145,8 @@ onShow('base', () => {
   knownCrew = now;
   firstVisit = false;
   renderBase();
+  // 物語:まだ見ていない章・信号の報告・新しい信号があれば、物語画面へ
+  runStory();
 });
 
 // 派遣ボタンに、帰ってきた件数・派遣中の件数を出す(拠点にいる間は15秒ごとに更新)

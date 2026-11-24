@@ -10,6 +10,7 @@ import { sfx, engine } from './audio.js';
 import { record } from './records.js';
 import { tilt, calibrate, askTilt, readInput, boostHeld, boostButton } from './input.js';
 import { beginExplore, finishTrip } from './explore.js';
+import { signalFor, storyMilestone, storyLit } from './story.js';
 
 const REDUCE = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 const tmpV = new THREE.Vector3();
@@ -126,15 +127,22 @@ function updateHazards(dt, zone) {
     else if (run.dist >= run.nextBelt) { run.beltWarn = 2.5; run.nextBelt = run.dist + rnd(2600, 4600); sfx.warn(); }
   }
   // 磁気嵐:船が横に流され、画面が紫に揺らぐ
+  // 星の灯台に灯をともしたあとは、嵐が短く弱くなる
+  const lit = storyLit(), SL = lit ? 5 : 8, SP = lit ? 0.45 : 1;
   if (zone.storm) {
     if (run.storm > 0) {
       run.storm -= dt; run.stormPh += dt;
-      const k = Math.min(1, run.storm / 1.2, (8 - run.storm) / 1.2);
-      run.px += Math.sin(run.stormPh * 0.9) * 48 * k * dt;
-      run.py += Math.cos(run.stormPh * 0.65) * 26 * k * dt;
-    } else if (run.dist >= run.nextStorm) { run.storm = 8; run.stormPh = Math.random() * 6; run.nextStorm = run.dist + rnd(4200, 7500); sfx.warn(); }
+      const k = Math.min(1, run.storm / 1.2, (SL - run.storm) / 1.2);
+      run.px += Math.sin(run.stormPh * 0.9) * 48 * SP * k * dt;
+      run.py += Math.cos(run.stormPh * 0.65) * 26 * SP * k * dt;
+    } else if (run.dist >= run.nextStorm) { run.storm = SL; run.stormPh = Math.random() * 6; run.nextStorm = run.dist + rnd(4200, 7500); sfx.warn(); }
   }
-  const sf = run.storm > 0 ? Math.min(1, run.storm / 1.2, (8 - run.storm) / 1.2) : 0;
+  const sf = run.storm > 0 ? Math.min(1, run.storm / 1.2, (SL - run.storm) / 1.2) * SP : 0;
+  // 物語の節目を越えたとき・灯火の核を積んで10,000光年に着いたとき
+  const ly = run.dist / 10;
+  const ms = storyMilestone(ly);
+  if (ms && run.storySaid !== ms.id) { run.storySaid = ms.id; say(`信号が強くなった……帰還すると物語が進みます`, 4); sfx.crew(); }
+  if (ly >= 10000 && save.items.core > 0 && !lit && !run.coreSaid) { run.coreSaid = true; say('星の灯台に到着。灯火の核を届けた。帰還すると物語が進みます', 5); sfx.crew(); }
   $('stormFx').style.opacity = (sf * (0.65 + Math.random() * 0.35)).toFixed(2);
   if (run.msg) { run.msg.t -= dt; if (run.msg.t <= 0) run.msg = null; }
 }
@@ -328,8 +336,9 @@ export function updateHud() {
   const tgt = $('mfdTarget');
   if (run.active) {
     const p = run.active;
-    setText('mfdTarget', `${p.type.name} ${p.name}`);
-    setText('mfdMeta', `${stars(p.rar)} 資源:${p.type.res}`);
+    const sig = signalFor(p, run.dist / 10);
+    setText('mfdTarget', `${sig ? '◆ ' : ''}${p.type.name} ${p.name}`);
+    setText('mfdMeta', sig ? `信号源:${sig.title}` : `${stars(p.rar)} 資源:${p.type.res}`);
     tgt.classList.remove('idle');
   } else {
     setText('mfdTarget', '航路に星なし');
@@ -365,7 +374,7 @@ export function updateHud() {
       ret.style.left = sx + 'px'; ret.style.top = sy + 'px';
       ret.style.width = size + 'px'; ret.style.height = size + 'px';
       retL.style.left = sx + 'px'; retL.style.top = (sy + size / 2 + 4) + 'px';
-      setText('retLabel', `${p.type.name} ${'★'.repeat(p.rar)}`);
+      setText('retLabel', `${signalFor(p, run.dist / 10) ? '◆信号源 ' : ''}${p.type.name} ${'★'.repeat(p.rar)}`);
       const hot = run.pull > 0;
       ret.classList.toggle('hot', hot); retL.classList.toggle('hot', hot);
       ret.hidden = false; retL.hidden = false;

@@ -9,6 +9,8 @@ const SCREENS = {
   records: 'scrRecords',
   storage: 'scrStorage',
   shop: 'scrShop',
+  signals: 'scrSignals',
+  story: 'scrStory',
   settings: 'scrSettings',
   explore: 'scrExplore',
   result: 'scrResult'
@@ -21,7 +23,7 @@ export function onShow(name, fn) { (showHooks[name] = showHooks[name] || []).pus
 export function onHide(name, fn) { (hideHooks[name] = hideHooks[name] || []).push(fn); }
 
 // ステーションの中を背景にする画面(それ以外は宇宙と操縦席の枠)
-export const STATION_SCREENS = new Set(['base', 'storage', 'shop', 'hangar', 'workshop', 'dispatch', 'records', 'settings']);
+export const STATION_SCREENS = new Set(['base', 'storage', 'shop', 'hangar', 'workshop', 'dispatch', 'records', 'settings', 'signals', 'story']);
 
 // name は SCREENS のどれか、または 'flying'(計器盤だけを出す)
 export function showScreen(name) {

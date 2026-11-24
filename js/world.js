@@ -193,12 +193,17 @@ export function clearWorld() {
 }
 
 // 遠くまで飛ぶほど、輪のある星(★2)や光る星(★3)が出やすい
+// 星の出方を少し寄せる関数(信号の発信源の星を出やすくする)。(ly) => { type, rar } か null
+let planetBias = () => null;
+export const setPlanetBias = (fn) => { planetBias = fn; };
+
 export function spawnPlanet(dist) {
   const ly = dist / 10;
   const p3 = clamp((ly - 800) / 4000, 0, 0.15), p2 = clamp(ly / 2000 * 0.5, 0, 0.5);
   const roll = Math.random();
-  const rar = roll < p3 ? 3 : roll < p3 + p2 ? 2 : 1;
-  const type = TYPES[Math.floor(Math.random() * TYPES.length)];
+  const bias = planetBias(ly);
+  const rar = Math.max(bias ? bias.rar : 0, roll < p3 ? 3 : roll < p3 + p2 ? 2 : 1);
+  const type = (bias && bias.type && TYPES.find(t => t.key === bias.type)) || TYPES[Math.floor(Math.random() * TYPES.length)];
   const r = 45 + Math.random() * 50;
   const ang = (Math.random() < 0.5 ? 0 : Math.PI) + (Math.random() - 0.5) * 1.3;
   const off = 150 + Math.random() * 80 + r * 0.6;

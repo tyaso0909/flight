@@ -7,6 +7,7 @@ import { onShow, showScreen } from './ui.js';
 import { toList, canPay, pay, costHtml, ownedResHtml } from './resui.js';
 import { sfx } from './audio.js';
 import { checkAchievements } from './records.js';
+import { CORE } from './story-data.js';
 
 const smith = CREW.find(c => c.key === 'toolsmith');
 
@@ -16,12 +17,32 @@ const areaOf = (key) => {
   return t ? `${t.name}・${SPECIAL[t.key].name}` : '';
 };
 
+// 灯火の核(物語の最後に使う特別な品)。設計図を手に入れると、道具職人がいなくても作れる(ピコが組み立てる)
+function coreRow() {
+  const st = save.story;
+  if (!st.coreBp) return '';
+  let btn;
+  if (st.lit) btn = '<span class="sh-state own">灯台にともした</span>';
+  else if (save.items.core > 0) btn = '<span class="sh-state own">製作済み</span>';
+  else {
+    const list = toList(CORE.cost), can = canPay(list);
+    btn = `<button class="btn up-buy${can ? ' primary' : ''}" type="button" data-core="1"${can ? '' : ' disabled'}>製作<span class="cost">${costHtml(list)}</span></button>`;
+  }
+  return `<div class="up-row special-item${st.lit || save.items.core ? ' equipped' : ''}">
+      <div>
+        <div class="up-title"><b>${CORE.name}</b><span class="ws-tag story">物語</span></div>
+        <div class="up-eff">${CORE.desc}</div>
+      </div>
+      ${btn}
+    </div>`;
+}
+
 function render() {
   const ok = hasCrew('toolsmith');
   $('wsWho').innerHTML = ok
     ? `${smith.role}の${smith.name}が作ってくれます。装備は一度作ればずっと有効です。`
     : `${smith.role}が仲間になると、ここで探索装備を作れます。集落を探索すると出会えることがあります。`;
-  $('wsList').innerHTML = GEAR.map(g => {
+  $('wsList').innerHTML = coreRow() + GEAR.map(g => {
     const owned = hasGear(g.key);
     const needOk = !g.needs || hasGear(g.needs);
     const list = toList(g.cost);
@@ -59,7 +80,19 @@ function make(key) {
   checkAchievements();
 }
 
+function makeCore() {
+  if (!save.story.coreBp || save.story.lit || save.items.core > 0) return;
+  const list = toList(CORE.cost);
+  if (!canPay(list)) return;
+  pay(list);
+  save.items.core = 1;
+  persist();
+  render();
+  sfx.crew();
+}
+
 $('wsList').addEventListener('click', (e) => {
+  if (e.target.closest('[data-core]:not([disabled])')) { makeCore(); return; }
   const b = e.target.closest('[data-gear]');
   if (b && !b.disabled) make(b.dataset.gear);
 });

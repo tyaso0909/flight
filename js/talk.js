@@ -71,6 +71,10 @@ export const GENERIC_TALK = [
 
 // 状況に合わせた会話。when(ctx) が true のときに選ばれやすくなる
 export const SITUATION_TALK = [
+  { when: (c) => c.signal, talk: [['A', '受信中の信号、どこから来てるんだろう'], ['B', '「信号」の画面に目標の星が出てるよ']] },
+  { when: (c) => c.coreBp, talk: [['A', '灯火の核、★5の素材が5種類もいるんだって'], ['B', 'ひとつずつ集めていこう。灯台が待ってる']] },
+  { when: (c) => c.lit, talk: [['A', '窓から灯台の光が見えるね'], ['B', 'エラさんも、きっと見てるよ']] },
+  { when: (c) => c.lit, talk: [['A', '最近、磁気嵐がおとなしいね'], ['B', '灯台の光のおかげだよ']] },
   { when: (c) => c.hullLow, talk: [['A', '船、かなり傷ついてるね'], ['B', '出る前に修理したほうがいい']] },
   { when: (c) => c.hullLow && c.here.includes('armor'), talk: [['armor', '……装甲がへこんでいる'], ['A', '修理しないと旋回が鈍くなるよ']] },
   { when: (c) => c.dispatchDone, talk: [['A', '派遣に出た仲間が帰ってきたみたい!'], ['B', '星図のテーブルで受け取れるよ']] },

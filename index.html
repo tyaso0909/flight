@@ -87,6 +87,7 @@
     <header class="bh-top">
       <div class="bh-title"><p class="eyebrow">拠点</p><h1 id="baseTitle">ステーション</h1></div>
       <div class="head-tools">
+        <button id="btnSignals" class="chip-btn" type="button">信号<span id="sgBadge" class="sg-badge" hidden></span></button>
         <button id="btnStorage" class="chip-btn" type="button">倉庫</button>
         <button id="btnRecords" class="chip-btn" type="button">記録</button>
         <button id="btnSettings" class="chip-btn" type="button">調整</button>
@@ -112,6 +113,49 @@
       <button id="btnQuickFix" class="btn" type="button" hidden>応急修理<small>無料</small></button>
       <button id="btnFullFix" class="btn" type="button" hidden>完全修理<small>★1素材20</small></button>
     </footer>
+  </section>
+
+  <!-- 信号と物語 -->
+  <section id="scrSignals" class="panel signals" hidden aria-labelledby="sgTitle">
+    <header class="pn-head">
+      <div class="pn-title"><p class="eyebrow">信号</p><h1 id="sgTitle">信号と物語</h1></div>
+      <p class="pn-head-side note">信号の発信源の星に着陸して拠点へ帰ると、話が聞けて報酬がもらえます。</p>
+    </header>
+    <div class="pn-body">
+      <div class="cols">
+        <div>
+          <h2>受信中の信号</h2>
+          <ul id="sgActive" class="sg-list"></ul>
+          <h2>解決した信号 <span id="sgDoneCount" class="loot-n"></span></h2>
+          <ul id="sgDone" class="sg-list"></ul>
+        </div>
+        <div>
+          <h2>物語「謎の信号を追う」</h2>
+          <ol id="sgStory" class="sg-story"></ol>
+          <div id="sgCore"></div>
+        </div>
+      </div>
+    </div>
+    <footer class="pn-foot">
+      <span class="pn-spacer"></span>
+      <button id="btnSgBack" class="btn" type="button">拠点へ戻る</button>
+    </footer>
+  </section>
+
+  <!-- 物語画面(紙芝居。タップで次へ) -->
+  <section id="scrStory" class="story-scr" hidden aria-labelledby="storyTitle">
+    <canvas id="storyArt" aria-hidden="true"></canvas>
+    <div id="storyTitleCard" class="sy-title">
+      <p id="storyEyebrow" class="eyebrow">序章</p>
+      <h1 id="storyTitle">目覚めの信号</h1>
+    </div>
+    <button id="btnStorySkip" class="chip-btn sy-skip" type="button">スキップ</button>
+    <div id="storyBox" class="sy-box" aria-live="polite">
+      <b id="storyWho" class="sy-who"></b>
+      <p id="storyText" class="sy-text"></p>
+      <span id="storyCount" class="sy-count"></span>
+      <span class="sy-next" aria-hidden="true">▼</span>
+    </div>
   </section>
 
   <!-- 倉庫(素材と仲間の一覧・遊び方) -->

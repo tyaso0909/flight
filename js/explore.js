@@ -12,6 +12,7 @@ import { sfx } from './audio.js';
 import { terrainURL } from './terrain.js';
 import { record, checkAchievements } from './records.js';
 import { relaunch } from './flight.js';
+import { onLanding } from './story.js';
 
 const DANGER_DAMAGE = 10;  // 危険地帯の落石で減る耐久
 const rarMult = (p) => [1, 1.6, 2.5][p.rar - 1];
@@ -34,6 +35,11 @@ export function beginExplore(p, run) {
   G.trip.stops.push({ name: `${p.type.name} ${p.name}`, rar: p.rar, ly: Math.round(run.dist / 10) });
   G.ex = { p, ly: Math.round(run.dist / 10), actions: 2, maxActions: 2, nodes: makeNodes(p), log: [] };
   record.land(p);
+  // 受信中の信号の発信源なら、見つけたことを記録に出す
+  onLanding(p, G.ex.ly).forEach(m => G.ex.log.unshift({
+    label: `信号源を発見:${m.title}`, drops: [], cls: 'special',
+    notes: [{ text: '拠点へ帰ると、くわしい話が聞けて報酬がもらえます', cls: 'good' }]
+  }));
   G.mode = 'explore';
   renderExplore();
   showScreen('explore');
@@ -240,6 +246,8 @@ export function finishTrip(reason) {
   const { kept, left } = packCargo(trip.gained, trip.cap);
   Object.entries(kept).forEach(([k, n]) => { save.res[k] = (save.res[k] || 0) + n; });
   save.best = Math.max(save.best || 0, Math.round(run.dist / 10));
+  // 灯火の核を積んで10,000光年に着いていれば、物語の最後へ進める
+  if (save.items.core > 0 && run.dist / 10 >= 10000 && !save.story.lit) save.story.ready = true;
   record.loot(kept, cargoUsed(kept) >= trip.cap);
   record.trip(trip.stops.length, reason);
   persist();

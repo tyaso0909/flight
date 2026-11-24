@@ -204,6 +204,7 @@ benchLight.position.set(BENCH.x + 1.2, 2.2, BENCH.z + 0.6); scene.add(benchLight
 
 // ---------- 窓の外 ----------
 const outside = new THREE.Group();
+const lighthouseGlow = new THREE.Group();
 scene.add(outside);
 {
   const N = 900, pos = new Float32Array(N * 3);
@@ -223,6 +224,28 @@ scene.add(outside);
   };
   neb('rgba(60,120,170,0.5)', -40, 30, -220, 220);
   neb('rgba(140,60,150,0.4)', 60, 10, -230, 200);
+  // 星の灯台の光(物語の最後に灯をともすと、窓の外に見えるようになる)
+  const glowTex = (c1) => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+    const c = cv.getContext('2d'), gr = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, c1); gr.addColorStop(0.25, 'rgba(255,235,190,0.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = gr; c.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(cv);
+  };
+  const add = (tex, s) => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    sp.scale.set(s, s, 1); lighthouseGlow.add(sp); return sp;
+  };
+  add(glowTex('rgba(255,245,220,1)'), 46);
+  add(glowTex('rgba(255,255,255,1)'), 9);
+  for (let i = 0; i < 3; i++) {
+    const ray = new THREE.Mesh(new THREE.PlaneGeometry(90, 1.2), new THREE.MeshBasicMaterial({ color: 0xfff0c8, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
+    ray.rotation.z = i * Math.PI / 3 + 0.4;
+    lighthouseGlow.add(ray);
+  }
+  lighthouseGlow.position.set(42, 15, -210);
+  lighthouseGlow.visible = false;
+  outside.add(lighthouseGlow);
   // 大きな惑星(ガス星)
   const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128;
   const c = cv.getContext('2d');
@@ -687,6 +710,7 @@ function updateBubbles(dt) {
 export function updateStation(dt) {
   T += dt;
   holoSpin.rotation.y += dt * 0.5;
+  if (lighthouseGlow.visible) { const k = 1 + Math.sin(T * 1.3) * 0.12; lighthouseGlow.scale.setScalar(k); lighthouseGlow.rotation.z = T * 0.05; }
   holoLight.intensity = 1.1 + Math.sin(T * 3) * 0.12;
   doorLight.color.setHex(merchState === 'arriving' || merchState === 'leaving' ? (Math.sin(T * 10) > 0 ? 0xffb84d : 0x5a3a10) : 0xffb84d);
   outside.rotation.y = Math.sin(T * 0.05) * 0.01;
@@ -708,6 +732,7 @@ export const stationNeedsRender = () => needRender;
 // 拠点に入ったとき:いる仲間・船・商人を今の状態に合わせる
 export function refreshStation() {
   refreshShip();
+  lighthouseGlow.visible = !!(save.story && save.story.lit);
   const here = save.crew.map(c => c.key).filter(k => !crewBusy(k));
   Object.keys(agents).forEach(k => { if (!here.includes(k)) removeAgent(k); });
   here.forEach((k, i) => {
